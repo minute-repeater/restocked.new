@@ -4,7 +4,7 @@ This document provides exact Vercel settings for deploying both the frontend app
 
 ## Repository
 
-**GitHub Repository:** https://github.com/YOUR_USERNAME/restocked-now
+**GitHub Repository:** https://github.com/minute-repeater/restocked.new
 
 ## Landing Site Deployment
 
