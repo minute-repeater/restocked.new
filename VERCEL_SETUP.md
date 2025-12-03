@@ -29,7 +29,7 @@ This document provides exact Vercel settings for deploying both the frontend app
 
 **Steps:**
 1. Go to Vercel → Add New → Project
-2. Import repository: `restocked-now`
+2. Import repository: `minute-repeater/restocked.new`
 3. Configure:
    - Root Directory: `landing`
    - Framework: Vite (auto-detected)
@@ -63,7 +63,7 @@ This document provides exact Vercel settings for deploying both the frontend app
 
 **Steps:**
 1. Go to Vercel → Add New → Project
-2. Import the same repository: `restocked-now`
+2. Import the same repository: `minute-repeater/restocked.new`
 3. Configure:
    - Root Directory: `frontend`
    - Framework: Vite (auto-detected)
