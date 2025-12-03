@@ -1,66 +1,113 @@
 #!/bin/bash
-# Script to push restocked-now monorepo to GitHub
+# Safe GitHub push script - uses HTTPS with token support
+
+set -e
 
 echo "═══════════════════════════════════════════════════════════════"
-echo "Push Restocked.now Monorepo to GitHub"
+echo "GitHub Repository Push Script"
 echo "═══════════════════════════════════════════════════════════════"
 echo ""
 
-# Check if remote already exists
-if git remote get-url origin 2>/dev/null; then
+# Check if remote exists
+if git remote get-url origin &>/dev/null; then
   echo "⚠️  Remote 'origin' already exists:"
-  git remote -v
-  echo ""
-  read -p "Do you want to update it? (y/n) " -n 1 -r
-  echo ""
-  if [[ $REPLY =~ ^[Yy]$ ]]; then
-    echo "Enter your GitHub username:"
-    read GITHUB_USERNAME
-    git remote set-url origin https://github.com/$GITHUB_USERNAME/restocked-now.git
-  else
-    echo "Using existing remote"
-    GITHUB_USERNAME=$(git remote get-url origin | sed -n 's|.*github.com/\([^/]*\)/.*|\1|p')
+  git remote get-url origin
+  read -p "Do you want to update it? (y/n): " -n 1 -r
+  echo
+  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "Aborted."
+    exit 1
   fi
-else
-  echo "Enter your GitHub username:"
-  read GITHUB_USERNAME
-  git remote add origin https://github.com/$GITHUB_USERNAME/restocked-now.git
 fi
 
+# Get GitHub username
+if [ -z "$GITHUB_USERNAME" ]; then
+  read -p "Enter your GitHub username: " GITHUB_USERNAME
+fi
+
+if [ -z "$GITHUB_USERNAME" ]; then
+  echo "❌ GitHub username is required"
+  exit 1
+fi
+
+REPO_NAME="restocked-now"
+REPO_URL="https://github.com/${GITHUB_USERNAME}/${REPO_NAME}.git"
+
 echo ""
-echo "📦 Repository: https://github.com/$GITHUB_USERNAME/restocked-now"
+echo "Repository URL: ${REPO_URL}"
+echo ""
+
+# Check if repo exists (optional - just a warning)
+echo "⚠️  Make sure you've created the repo at:"
+echo "   https://github.com/new"
+echo "   Name: ${REPO_NAME}"
+echo "   Public, no README/gitignore/license"
+echo ""
+read -p "Press Enter to continue or Ctrl+C to cancel..."
+
+# Add/update remote
+echo ""
+echo "📡 Configuring remote..."
+if git remote get-url origin &>/dev/null; then
+  git remote set-url origin "$REPO_URL"
+  echo "✅ Updated remote 'origin'"
+else
+  git remote add origin "$REPO_URL"
+  echo "✅ Added remote 'origin'"
+fi
+
+# Ensure we're on main branch
+echo ""
+echo "🌿 Ensuring branch is 'main'..."
+git branch -M main
+
+# Check for uncommitted changes
+if [ -n "$(git status --porcelain)" ]; then
+  echo ""
+  echo "⚠️  You have uncommitted changes:"
+  git status --short
+  echo ""
+  read -p "Commit these changes before pushing? (y/n): " -n 1 -r
+  echo
+  if [[ $REPLY =~ ^[Yy]$ ]]; then
+    git add -A
+    git commit -m "Add helper scripts and finalize for GitHub push"
+    echo "✅ Changes committed"
+  fi
+fi
+
+# Push
 echo ""
 echo "🚀 Pushing to GitHub..."
 echo ""
+echo "💡 If prompted for credentials:"
+echo "   Username: ${GITHUB_USERNAME}"
+echo "   Password: Use a Personal Access Token (not your GitHub password)"
+echo "   Create token: https://github.com/settings/tokens"
+echo "   Required scope: 'repo'"
+echo ""
 
-# Ensure we're on main branch
-git branch -M main
+git push -u origin main
 
-# Push
-if git push -u origin main; then
+if [ $? -eq 0 ]; then
   echo ""
-  echo "✅ Successfully pushed to GitHub!"
+  echo "═══════════════════════════════════════════════════════════════"
+  echo "✅ SUCCESS! Repository pushed to GitHub"
+  echo "═══════════════════════════════════════════════════════════════"
   echo ""
-  echo "Repository URL: https://github.com/$GITHUB_USERNAME/restocked-now"
+  echo "Repository URL: https://github.com/${GITHUB_USERNAME}/${REPO_NAME}"
   echo ""
   echo "Next steps:"
-  echo "1. Verify on GitHub: https://github.com/$GITHUB_USERNAME/restocked-now"
-  echo "2. Check that you see: landing/, frontend/, src/, etc."
-  echo "3. Connect to Vercel using VERCEL_SETUP.md instructions"
+  echo "1. Verify files on GitHub: https://github.com/${GITHUB_USERNAME}/${REPO_NAME}"
+  echo "2. Connect to Vercel:"
+  echo "   - Landing: Root Directory = 'landing'"
+  echo "   - Frontend: Root Directory = 'frontend'"
+  echo "3. Update Railway backend env vars with Vercel URLs"
 else
   echo ""
-  echo "❌ Push failed. Common solutions:"
-  echo ""
-  echo "Option 1: Use GitHub CLI"
-  echo "  gh auth login"
-  echo "  git push -u origin main"
-  echo ""
-  echo "Option 2: Use Personal Access Token"
-  echo "  1. Go to: https://github.com/settings/tokens"
-  echo "  2. Generate new token with 'repo' scope"
-  echo "  3. Use token as password when prompted"
-  echo ""
-  echo "Option 3: Use SSH"
-  echo "  git remote set-url origin git@github.com:$GITHUB_USERNAME/restocked-now.git"
-  echo "  git push -u origin main"
+  echo "❌ Push failed. Common issues:"
+  echo "   1. Repository doesn't exist - create it at https://github.com/new"
+  echo "   2. Authentication failed - use Personal Access Token"
+  echo "   3. Network issue - check internet connection"
+  exit 1
 fi
