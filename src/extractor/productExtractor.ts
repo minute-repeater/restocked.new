@@ -45,8 +45,8 @@ function extractTitle($: CheerioAPI, jsonBlobs: any[] = [], debugLogger?: Extrac
             const name = typeof obj.name === "string" ? obj.name : String(obj.name);
             debugLogger?.logStrategy("JSON-LD Product.name", "success", { name });
             return name.trim();
-          }
-        }
+    }
+  }
 
         // Shopify product JSON structure: { product: { title: "..." } }
         if (obj.product && typeof obj.product === "object" && obj.product.title) {
@@ -60,8 +60,8 @@ function extractTitle($: CheerioAPI, jsonBlobs: any[] = [], debugLogger?: Extrac
           const title = typeof obj.title === "string" ? obj.title : String(obj.title);
           debugLogger?.logStrategy("Direct product.title", "success", { title });
           return title.trim();
-        }
-      }
+    }
+  }
     }
   }
   
@@ -233,14 +233,14 @@ function extractImages($: CheerioAPI, jsonBlobs: any[] = [], debugLogger?: Extra
     // Handle arrays of JSON-LD objects
     const objects = Array.isArray(json) ? json : [json];
     for (const obj of objects) {
-      // Handle Product schema (schema.org)
+    // Handle Product schema (schema.org)
       const isProduct = obj["@type"] === "Product" ||
         obj["@type"] === "http://schema.org/Product" ||
         obj["@type"] === "https://schema.org/Product" ||
         (Array.isArray(obj["@type"]) && obj["@type"].includes("Product"));
 
       if (isProduct && obj.image) {
-        // Try image field (can be string or array)
+      // Try image field (can be string or array)
         if (typeof obj.image === "string") {
           imageUrls.add(obj.image.trim());
         } else if (Array.isArray(obj.image)) {
@@ -255,10 +255,10 @@ function extractImages($: CheerioAPI, jsonBlobs: any[] = [], debugLogger?: Extra
         } else if (obj.image && typeof obj.image === "object") {
           if (obj.image.url) imageUrls.add(String(obj.image.url).trim());
           if (obj.image.contentUrl) imageUrls.add(String(obj.image.contentUrl).trim());
-        }
       }
+    }
 
-      // Handle nested product data (common in e-commerce sites)
+    // Handle nested product data (common in e-commerce sites)
       if (obj.product && obj.product.image) {
         const product = obj.product;
         if (typeof product.image === "string") {
@@ -299,15 +299,15 @@ function extractImages($: CheerioAPI, jsonBlobs: any[] = [], debugLogger?: Extra
       // Handle direct images array (some JSON structures)
       if (obj.images && Array.isArray(obj.images)) {
         obj.images.forEach((img: any) => {
-          if (typeof img === "string") {
-            imageUrls.add(img.trim());
-          } else if (img && typeof img === "object") {
-            if (img.src) imageUrls.add(String(img.src).trim());
-            if (img.url) imageUrls.add(String(img.url).trim());
-            if (img.originalSrc) imageUrls.add(String(img.originalSrc).trim());
-          }
-        });
-      }
+        if (typeof img === "string") {
+          imageUrls.add(img.trim());
+        } else if (img && typeof img === "object") {
+          if (img.src) imageUrls.add(String(img.src).trim());
+          if (img.url) imageUrls.add(String(img.url).trim());
+          if (img.originalSrc) imageUrls.add(String(img.originalSrc).trim());
+        }
+      });
+    }
     }
   }
 
@@ -377,14 +377,14 @@ function extractImages($: CheerioAPI, jsonBlobs: any[] = [], debugLogger?: Extra
       if (src) imageUrls.add(src.trim());
       if (dataSrc) imageUrls.add(dataSrc.trim());
       if (srcSet) {
-        // Parse srcset (format: "url1 1x, url2 2x")
+      // Parse srcset (format: "url1 1x, url2 2x")
         const srcsetUrls = srcSet
-          .split(",")
-          .map((s: string) => s.trim().split(/\s+/)[0])
-          .filter((url: string) => url);
-        srcsetUrls.forEach((url: string) => imageUrls.add(url.trim()));
-      }
-    });
+        .split(",")
+        .map((s: string) => s.trim().split(/\s+/)[0])
+        .filter((url: string) => url);
+      srcsetUrls.forEach((url: string) => imageUrls.add(url.trim()));
+    }
+  });
   }
 
   // Filter out empty strings and invalid URLs, resolve relative URLs

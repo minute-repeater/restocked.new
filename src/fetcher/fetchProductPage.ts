@@ -151,9 +151,9 @@ export async function fetchProductPage(url: string): Promise<FetchResult> {
   const extractionPromise = (async (): Promise<FetchResult> => {
     try {
       // Step 1: Try HTTP fetch first
-      const httpResult = await httpFetchWithRetry(url, 10000);
+  const httpResult = await httpFetchWithRetry(url, 10000);
 
-      if (httpResult.success && httpResult.html) {
+  if (httpResult.success && httpResult.html) {
         // Check if it's Shopify and try JSON endpoints
         if (isShopifyStore(url, httpResult.html)) {
           const shopifyJson = await tryShopifyJson(url);
@@ -203,25 +203,25 @@ export async function fetchProductPage(url: string): Promise<FetchResult> {
           };
         }
 
-        // HTTP fetch succeeded with valid HTML
-        return {
-          success: true,
-          modeUsed: "http",
-          originalURL,
-          finalURL: httpResult.finalURL,
-          statusCode: httpResult.statusCode,
-          rawHTML: httpResult.html,
-          renderedHTML: null,
-          fetchedAt,
-          metadata: {
-            redirects: httpResult.redirects,
-            headers: httpResult.headers,
-            timing: {
-              httpMs: httpResult.timingMs,
-            },
-          },
-        };
-      }
+    // HTTP fetch succeeded with valid HTML
+    return {
+      success: true,
+      modeUsed: "http",
+      originalURL,
+      finalURL: httpResult.finalURL,
+      statusCode: httpResult.statusCode,
+      rawHTML: httpResult.html,
+      renderedHTML: null,
+      fetchedAt,
+      metadata: {
+        redirects: httpResult.redirects,
+        headers: httpResult.headers,
+        timing: {
+          httpMs: httpResult.timingMs,
+        },
+      },
+    };
+  }
 
       // Step 2: HTTP failed or HTML incomplete, try Playwright as fallback
       // Skip Playwright if disabled (e.g., in profiling mode)
@@ -250,7 +250,7 @@ export async function fetchProductPage(url: string): Promise<FetchResult> {
       console.log("[Fetch] HTTP fetch failed or incomplete, trying Playwright");
       const playwrightResult = await playwrightFetch(url, 15000);
 
-      if (playwrightResult.success && playwrightResult.html) {
+  if (playwrightResult.success && playwrightResult.html) {
         // Check HTML size from Playwright
         if (playwrightResult.html.length > MAX_HTML_SIZE) {
           console.warn(`[Fetch] Playwright HTML too large: ${(playwrightResult.html.length / 1024 / 1024).toFixed(2)} MB`);
@@ -274,46 +274,46 @@ export async function fetchProductPage(url: string): Promise<FetchResult> {
           };
         }
 
-        return {
-          success: true,
-          modeUsed: "playwright",
-          originalURL,
-          finalURL: playwrightResult.finalURL,
+    return {
+      success: true,
+      modeUsed: "playwright",
+      originalURL,
+      finalURL: playwrightResult.finalURL,
           statusCode: null,
-          rawHTML: null,
-          renderedHTML: playwrightResult.html,
-          fetchedAt,
-          metadata: {
-            consoleErrors: playwrightResult.consoleErrors,
-            timing: {
-              httpMs: httpResult.timingMs,
-              playwrightMs: playwrightResult.timingMs,
-            },
-          },
-        };
-      }
-
-      // Both methods failed
-      return {
-        success: false,
-        modeUsed: "failed",
-        originalURL,
-        finalURL: playwrightResult.finalURL || httpResult.finalURL || null,
-        statusCode: httpResult.statusCode,
-        rawHTML: null,
-        renderedHTML: null,
-        fetchedAt,
-        metadata: {
-          redirects: httpResult.redirects,
-          headers: httpResult.headers,
-          consoleErrors: playwrightResult.consoleErrors,
-          timing: {
-            httpMs: httpResult.timingMs,
-            playwrightMs: playwrightResult.timingMs,
-          },
+      rawHTML: null,
+      renderedHTML: playwrightResult.html,
+      fetchedAt,
+      metadata: {
+        consoleErrors: playwrightResult.consoleErrors,
+        timing: {
+          httpMs: httpResult.timingMs,
+          playwrightMs: playwrightResult.timingMs,
         },
-        error: `HTTP: ${httpResult.error || "unknown"}; Playwright: ${playwrightResult.error || "unknown"}`,
-      };
+      },
+    };
+  }
+
+  // Both methods failed
+  return {
+    success: false,
+    modeUsed: "failed",
+    originalURL,
+    finalURL: playwrightResult.finalURL || httpResult.finalURL || null,
+    statusCode: httpResult.statusCode,
+    rawHTML: null,
+    renderedHTML: null,
+    fetchedAt,
+    metadata: {
+      redirects: httpResult.redirects,
+      headers: httpResult.headers,
+      consoleErrors: playwrightResult.consoleErrors,
+      timing: {
+        httpMs: httpResult.timingMs,
+        playwrightMs: playwrightResult.timingMs,
+      },
+    },
+    error: `HTTP: ${httpResult.error || "unknown"}; Playwright: ${playwrightResult.error || "unknown"}`,
+  };
     } catch (error: any) {
       // Ensure we don't crash the server
       console.error("[Fetch] Error during extraction:", error.message);

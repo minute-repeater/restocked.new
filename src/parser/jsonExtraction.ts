@@ -47,7 +47,7 @@ export function extractEmbeddedJson(html: string): any[] {
         if (Array.isArray(parsed)) {
           jsonObjects.push(...parsed);
         } else {
-          jsonObjects.push(parsed);
+        jsonObjects.push(parsed);
         }
       }
     }
