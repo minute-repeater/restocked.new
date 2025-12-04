@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/api/server.js",
+    "start": "node dist/db/runMigrationsAndStart.js",
+    "start:server-only": "node dist/api/server.js",
     "dev": "tsc --watch",
     "dev:server": "tsc --watch & node --watch dist/api/server.js",
     "test": "node --loader ts-node/esm tests/fetcher.test.ts",

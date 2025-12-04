@@ -160,7 +160,8 @@ async function runMigrations(): Promise<void> {
   if (!process.env.DATABASE_URL) {
     console.error("✗ DATABASE_URL environment variable is not set");
     console.error("  Railway should set this automatically. Check your Railway service variables.");
-    process.exit(1);
+    console.error("  Skipping migrations - server will start but database operations may fail.");
+    return; // Don't exit - let server start and fail gracefully if DB is needed
   }
 
   console.log(`[Migration] Using DATABASE_URL: ${process.env.DATABASE_URL.replace(/:[^:@]+@/, ':****@')}\n`);
