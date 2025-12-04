@@ -1,0 +1,6 @@
+# ============================================
+# Vercel Environment Variables - Google OAuth
+# ============================================
+# Copy this EXACTLY into Vercel Dashboard → Settings → Environment Variables
+
+VITE_GOOGLE_OAUTH_ENABLED=true
