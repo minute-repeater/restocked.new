@@ -28,6 +28,7 @@ function getMigrationFiles(): string[] {
     "003_add_scheduler_and_admin.sql",
     "004_notifications_system.sql",
     "005_add_user_plans.sql",
+    "006_add_oauth_support.sql",
   ];
 
   return files.map((file) => join(migrationsDir, file));
