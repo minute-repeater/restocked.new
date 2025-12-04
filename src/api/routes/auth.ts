@@ -146,6 +146,13 @@ router.get("/google/url", async (req: Request, res: Response) => {
  */
 router.get("/google/callback", async (req: Request, res: Response) => {
   try {
+    // Check configuration first
+    if (!isGoogleOAuthConfigured()) {
+      logger.warn({ path: "/auth/google/callback" }, "Google OAuth not configured");
+      const frontendErrorUrl = `${config.frontendUrl}/login?error=${encodeURIComponent("Google OAuth is not configured")}`;
+      return res.redirect(frontendErrorUrl);
+    }
+
     const { code, state } = req.query;
 
     if (!code || typeof code !== "string") {
@@ -214,6 +221,13 @@ router.get("/apple/url", async (req: Request, res: Response) => {
  */
 router.post("/apple/callback", async (req: Request, res: Response) => {
   try {
+    // Check configuration first
+    if (!isAppleOAuthConfigured()) {
+      logger.warn({ path: "/auth/apple/callback" }, "Apple OAuth not configured");
+      const frontendErrorUrl = `${config.frontendUrl}/login?error=${encodeURIComponent("Apple OAuth is not configured")}`;
+      return res.redirect(frontendErrorUrl);
+    }
+
     const { code, id_token, state } = req.body;
 
     if (!code || typeof code !== "string") {

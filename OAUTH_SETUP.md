@@ -2,16 +2,31 @@
 
 This document describes how to configure Google and Apple OAuth authentication for the application.
 
+**Important:** OAuth is **disabled by default**. It will not be visible or functional until you explicitly enable it via environment variables.
+
 ---
 
 ## Overview
 
 The application supports three authentication methods:
-1. **Email/Password** - Traditional email and password authentication
-2. **Google OAuth** - Sign in with Google account
-3. **Apple Sign-In** - Sign in with Apple ID
+1. **Email/Password** - Traditional email and password authentication (always enabled)
+2. **Google OAuth** - Sign in with Google account (disabled by default)
+3. **Apple Sign-In** - Sign in with Apple ID (disabled by default)
 
 All authentication methods create users in the same `users` table and use the same JWT token system.
+
+---
+
+## Setup Order (Recommended)
+
+To avoid user confusion, follow this order:
+
+1. **First:** Configure OAuth providers (Google Cloud Console, Apple Developer Portal)
+2. **Second:** Set backend environment variables in Railway
+3. **Third:** Set frontend environment variables in Vercel
+4. **Fourth:** Deploy and test
+
+**Why this order?** If frontend flags are enabled before backend env vars are set, users will see OAuth buttons that return errors. Setting backend first ensures OAuth works when buttons appear.
 
 ---
 

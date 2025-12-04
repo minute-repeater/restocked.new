@@ -193,11 +193,84 @@ The implementation is **production-ready** and follows all requirements:
 
 ---
 
+## Step 4: Migration & Backward Compatibility Verification
+
+### ✅ Migration 006 Verification
+
+**Location:** `db/migrations/006_add_oauth_support.sql`
+
+**Idempotency:**
+- ✅ Uses `IF NOT EXISTS` for columns
+- ✅ Uses `DROP CONSTRAINT IF EXISTS` before adding constraint
+- ✅ Uses `DO $$ ... END $$` block to check column nullability before altering
+- ✅ Safe to run multiple times
+
+**Migration Runner:**
+- ✅ Listed in `src/db/migrate.ts` as `006_add_oauth_support.sql`
+- ✅ Will be run automatically on Railway deployment
+- ✅ Tracked in `schema_migrations` table
+
+**Database Changes:**
+- ✅ Makes `password_hash` nullable (idempotent check)
+- ✅ Adds `oauth_provider` column (nullable)
+- ✅ Adds `oauth_provider_id` column (nullable)
+- ✅ Adds constraint: `oauth_provider IN ('google', 'apple', 'local')`
+- ✅ Creates indexes for OAuth lookups
+- ✅ Creates unique constraint on `(oauth_provider, oauth_provider_id)`
+
+### ✅ Backward Compatibility Checks
+
+**Existing Email/Password Users:**
+- ✅ Can still register: `registerUser()` always creates `password_hash`
+- ✅ Can still login: `loginUser()` checks for `password_hash` before verifying
+- ✅ JWT tokens work: same format for all user types
+- ✅ Protected routes work: `requireAuth` middleware doesn't check password_hash
+- ✅ Database schema: existing users have non-null `password_hash`, unaffected
+
+**OAuth Users:**
+- ✅ Created with `password_hash: null` (correct)
+- ✅ Cannot use email/password login: `loginUser()` rejects if `password_hash` is null
+- ✅ Can use OAuth login: `oauthLogin()` handles null password_hash
+- ✅ JWT tokens work: same format as email/password users
+- ✅ Protected routes work: same JWT validation
+
+**Code Assumptions:**
+- ✅ `loginUser()` checks `if (!user.password_hash)` before using it
+- ✅ `registerUser()` always creates password_hash
+- ✅ `oauthLogin()` creates users with `password_hash: null`
+- ✅ Repository handles nullable password_hash correctly
+- ✅ No code assumes password_hash is always non-null
+
+**Database Compatibility:**
+- ✅ Migration is additive (doesn't break existing data)
+- ✅ Existing users remain unchanged
+- ✅ OAuth fields are nullable (don't affect existing users)
+- ✅ Unique constraint only applies where OAuth fields are not null
+
+### ✅ Safety Changes Made
+
+**Callback Route Safety:**
+- ✅ Added early configuration checks to `/auth/google/callback`
+- ✅ Added early configuration checks to `/auth/apple/callback`
+- ✅ Prevents unnecessary processing when OAuth is not configured
+- ✅ Provides clearer error messages
+
+**No Breaking Changes:**
+- ✅ Email/password login unchanged
+- ✅ JWT format unchanged
+- ✅ AuthStore shape unchanged
+- ✅ API endpoints unchanged
+- ✅ Database schema backward compatible
+
+---
+
 ## Summary
 
 **Status:** ✅ **OAuth is fully implemented and production-ready**
 
-**What Changed:** Nothing - OAuth was already implemented correctly.
+**What Changed:**
+1. Added early configuration checks to OAuth callback routes (safety improvement)
+2. Created comprehensive documentation
 
 **What to Configure:**
 - Railway (backend): `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URL`, `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`, `APPLE_REDIRECT_URL`
@@ -213,6 +286,12 @@ The implementation is **production-ready** and follows all requirements:
 - Remove backend env vars (routes return 400)
 - Email/password login continues to work unchanged
 
+**Backward Compatibility:**
+- ✅ Existing email/password users unaffected
+- ✅ Migration is idempotent and safe
+- ✅ No code assumes password_hash is always non-null
+- ✅ OAuth users cannot use email/password (by design)
+
 ---
 
 ## Next Steps
@@ -222,5 +301,5 @@ The implementation is **production-ready** and follows all requirements:
 3. ✅ Test OAuth flow end-to-end
 4. ✅ Monitor Sentry for OAuth errors
 
-**No code changes required** - implementation is complete and correct.
+**Implementation is complete, safe, and backward compatible.**
 
