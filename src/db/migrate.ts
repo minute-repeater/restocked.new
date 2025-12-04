@@ -103,15 +103,64 @@ async function runMigration(filePath: string): Promise<void> {
     // Execute migration in a transaction
     await query("BEGIN");
     try {
-      // Split by semicolons and execute each statement
-      const statements = sql
-        .split(";")
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0 && !s.startsWith("--"));
+      // Better SQL parsing: handle multi-line statements and comments properly
+      // Remove block comments first
+      let cleanedSql = sql.replace(/\/\*[\s\S]*?\*\//g, "");
+      
+      // Split by semicolons but preserve multi-line statements
+      const lines = cleanedSql.split("\n");
+      const statements: string[] = [];
+      let currentStatement = "";
 
-      for (const statement of statements) {
-        if (statement.trim()) {
+      for (const line of lines) {
+        // Remove inline comments (-- to end of line) but preserve the line if it has SQL
+        const lineWithoutComment = line.split("--")[0].trim();
+        
+        if (lineWithoutComment.length === 0) {
+          // Empty line, continue
+          continue;
+        }
+
+        currentStatement += (currentStatement ? " " : "") + lineWithoutComment;
+
+        // If line ends with semicolon, we have a complete statement
+        if (lineWithoutComment.endsWith(";")) {
+          const statement = currentStatement.trim();
+          if (statement.length > 0 && statement !== ";") {
+            statements.push(statement);
+          }
+          currentStatement = "";
+        }
+      }
+
+      // Add any remaining statement (shouldn't happen with proper SQL, but handle it)
+      if (currentStatement.trim().length > 0) {
+        const statement = currentStatement.trim();
+        if (!statement.endsWith(";")) {
+          statements.push(statement + ";");
+        } else {
+          statements.push(statement);
+        }
+      }
+
+      // Execute each statement sequentially with better error reporting
+      for (let i = 0; i < statements.length; i++) {
+        const statement = statements[i].trim();
+        if (statement.length === 0 || statement === ";") {
+          continue;
+        }
+
+        try {
+          // Log first few characters of statement for debugging
+          const preview = statement.substring(0, 50).replace(/\s+/g, " ");
+          console.log(`[Migration] Executing statement ${i + 1}/${statements.length}: ${preview}...`);
+          
           await query(statement);
+        } catch (error: any) {
+          console.error(`[Migration] Error executing statement ${i + 1}/${statements.length}:`);
+          console.error(`[Migration] Statement: ${statement.substring(0, 200)}...`);
+          console.error(`[Migration] Error: ${error.message}`);
+          throw error;
         }
       }
 
@@ -125,6 +174,9 @@ async function runMigration(filePath: string): Promise<void> {
     }
   } catch (error: any) {
     console.error(`[Migration] ✗ ${migrationName} failed:`, error.message);
+    if (error.stack) {
+      console.error(`[Migration] Stack trace:`, error.stack);
+    }
     throw error;
   }
 }
