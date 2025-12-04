@@ -103,28 +103,74 @@ async function runMigration(filePath: string): Promise<void> {
     // Execute migration in a transaction
     await query("BEGIN");
     try {
-      // Better SQL parsing: handle multi-line statements and comments properly
-      // Remove block comments first
+      // Better SQL parsing: handle multi-line statements, comments, and dollar-quoted strings
+      // Remove block comments first (but preserve dollar-quoted strings)
       let cleanedSql = sql.replace(/\/\*[\s\S]*?\*\//g, "");
       
-      // Split by semicolons but preserve multi-line statements
-      const lines = cleanedSql.split("\n");
+      // Parse SQL statements, handling dollar-quoted strings properly
+      // Dollar-quoted strings use $tag$ syntax where tag can be empty ($$)
       const statements: string[] = [];
       let currentStatement = "";
-
-      for (const line of lines) {
-        // Remove inline comments (-- to end of line) but preserve the line if it has SQL
-        const lineWithoutComment = line.split("--")[0].trim();
+      let inDollarQuote = false;
+      let dollarQuoteTag = "";
+      
+      // Process character by character to properly handle dollar quotes
+      for (let i = 0; i < cleanedSql.length; i++) {
+        const char = cleanedSql[i];
+        const nextChar = cleanedSql[i + 1];
         
-        if (lineWithoutComment.length === 0) {
-          // Empty line, continue
+        // Check for start of dollar-quoted string ($tag$)
+        if (char === '$' && !inDollarQuote) {
+          // Find the closing $ for the tag
+          let tagEnd = cleanedSql.indexOf('$', i + 1);
+          if (tagEnd !== -1) {
+            dollarQuoteTag = cleanedSql.substring(i, tagEnd + 1);
+            inDollarQuote = true;
+            currentStatement += dollarQuoteTag;
+            i = tagEnd; // Skip past the opening tag
+            continue;
+          }
+        }
+        
+        // Check for end of dollar-quoted string
+        if (inDollarQuote && char === '$') {
+          // Check if this matches our opening tag
+          if (cleanedSql.substring(i, i + dollarQuoteTag.length) === dollarQuoteTag) {
+            currentStatement += dollarQuoteTag;
+            i += dollarQuoteTag.length - 1; // Skip past the closing tag
+            inDollarQuote = false;
+            dollarQuoteTag = "";
+            continue;
+          }
+        }
+        
+        // If we're in a dollar-quoted string, add character as-is
+        if (inDollarQuote) {
+          currentStatement += char;
           continue;
         }
-
-        currentStatement += (currentStatement ? " " : "") + lineWithoutComment;
-
-        // If line ends with semicolon, we have a complete statement
-        if (lineWithoutComment.endsWith(";")) {
+        
+        // Handle inline comments (-- to end of line) but only outside dollar quotes
+        if (char === '-' && nextChar === '-') {
+          // Skip to end of line
+          const lineEnd = cleanedSql.indexOf('\n', i);
+          if (lineEnd !== -1) {
+            i = lineEnd;
+            // Add newline if statement has content
+            if (currentStatement.trim().length > 0) {
+              currentStatement += '\n';
+            }
+            continue;
+          } else {
+            // End of file, break
+            break;
+          }
+        }
+        
+        currentStatement += char;
+        
+        // Check for statement end (semicolon outside dollar quotes)
+        if (char === ';' && !inDollarQuote) {
           const statement = currentStatement.trim();
           if (statement.length > 0 && statement !== ";") {
             statements.push(statement);
@@ -132,8 +178,8 @@ async function runMigration(filePath: string): Promise<void> {
           currentStatement = "";
         }
       }
-
-      // Add any remaining statement (shouldn't happen with proper SQL, but handle it)
+      
+      // Add any remaining statement
       if (currentStatement.trim().length > 0) {
         const statement = currentStatement.trim();
         if (!statement.endsWith(";")) {
