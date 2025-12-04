@@ -22,23 +22,30 @@ import { config } from "../config.js";
 export function createServer(): Express {
   const app = express();
 
-  // CORS middleware - allow requests from frontend
-  // In production, support multiple origins (landing site + app)
+  // CORS middleware - allow requests from specific origins
   const allowedOrigins = config.isProduction
     ? [
+        "https://app.restocked.now",
+        "https://restocked.now",
+        "https://restocked-frontend.vercel.app",
+        "https://restocked-dashboard.vercel.app",
+        "https://restockednew-production.up.railway.app",
+      ]
+    : [
         config.frontendUrl,
-        // Support app subdomain if different
-        config.frontendUrl.replace(/^https?:\/\//, "https://app."),
-        config.frontendUrl.replace(/^https?:\/\//, "https://www."),
-      ].filter(Boolean)
-    : [config.frontendUrl];
+        "http://localhost:5173",
+        "http://localhost:3000",
+      ];
 
   app.use(
     cors({
       origin: (origin, callback) => {
-        // Allow requests with no origin (mobile apps, Postman, etc.)
+        // Allow requests with no origin (mobile apps, Postman, etc.) in development only
         if (!origin) {
-          return callback(null, true);
+          if (config.isDevelopment) {
+            return callback(null, true);
+          }
+          return callback(new Error("Not allowed by CORS"));
         }
         if (allowedOrigins.includes(origin)) {
           return callback(null, true);
@@ -49,9 +56,11 @@ export function createServer(): Express {
         }
         callback(new Error("Not allowed by CORS"));
       },
-      credentials: true,
+      credentials: false,
       methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
       allowedHeaders: ["Content-Type", "Authorization"],
+      preflightContinue: false,
+      optionsSuccessStatus: 204,
     })
   );
 
