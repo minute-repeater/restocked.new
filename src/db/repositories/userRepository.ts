@@ -6,7 +6,9 @@ import { BaseRepository } from "../baseRepository.js";
 export interface DBUser {
   id: string; // UUID
   email: string;
-  password_hash: string;
+  password_hash: string | null; // Nullable for OAuth users
+  oauth_provider: 'google' | 'apple' | 'local' | null; // OAuth provider or 'local' for email/password
+  oauth_provider_id: string | null; // Provider's user ID
   plan: 'free' | 'pro';
   created_at: string; // ISO timestamp string
   updated_at: string; // ISO timestamp string
@@ -17,7 +19,9 @@ export interface DBUser {
  */
 export interface CreateUserInput {
   email: string;
-  password_hash: string;
+  password_hash?: string | null; // Optional for OAuth users
+  oauth_provider?: 'google' | 'apple' | 'local' | null;
+  oauth_provider_id?: string | null;
 }
 
 /**
@@ -33,12 +37,17 @@ export class UserRepository extends BaseRepository {
    */
   async createUser(data: CreateUserInput): Promise<Omit<DBUser, "password_hash">> {
     const sql = `
-      INSERT INTO users (email, password_hash)
-      VALUES (LOWER($1), $2)
-      RETURNING id, email, plan, created_at, updated_at
+      INSERT INTO users (email, password_hash, oauth_provider, oauth_provider_id)
+      VALUES (LOWER($1), $2, $3, $4)
+      RETURNING id, email, oauth_provider, oauth_provider_id, plan, created_at, updated_at
     `;
 
-    const params = [data.email, data.password_hash];
+    const params = [
+      data.email,
+      data.password_hash || null,
+      data.oauth_provider || null,
+      data.oauth_provider_id || null,
+    ];
     return this.insert<Omit<DBUser, "password_hash">>(sql, params);
   }
 
@@ -60,8 +69,20 @@ export class UserRepository extends BaseRepository {
    * @returns User without password_hash or null if not found
    */
   async findById(id: string): Promise<Omit<DBUser, "password_hash"> | null> {
-    const sql = `SELECT id, email, plan, created_at, updated_at FROM users WHERE id = $1`;
+    const sql = `SELECT id, email, oauth_provider, oauth_provider_id, plan, created_at, updated_at FROM users WHERE id = $1`;
     return this.findOne<Omit<DBUser, "password_hash">>(sql, [id]);
+  }
+
+  /**
+   * Find a user by OAuth provider and provider ID
+   *
+   * @param provider - OAuth provider ('google' | 'apple')
+   * @param providerId - Provider's user ID
+   * @returns User with password_hash or null if not found
+   */
+  async findByOAuthProvider(provider: 'google' | 'apple', providerId: string): Promise<DBUser | null> {
+    const sql = `SELECT * FROM users WHERE oauth_provider = $1 AND oauth_provider_id = $2`;
+    return this.findOne<DBUser>(sql, [provider, providerId]);
   }
 
   /**

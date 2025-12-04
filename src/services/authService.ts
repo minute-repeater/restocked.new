@@ -52,6 +52,8 @@ export class AuthService {
     const user = await this.userRepo.createUser({
       email: email.toLowerCase(),
       password_hash,
+      oauth_provider: 'local', // Email/password users are 'local'
+      oauth_provider_id: null,
     });
 
     // Generate JWT token
@@ -78,6 +80,11 @@ export class AuthService {
       throw new Error("Invalid email or password");
     }
 
+    // Check if user has a password (not an OAuth-only user)
+    if (!user.password_hash) {
+      throw new Error("Invalid email or password");
+    }
+
     // Verify password
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
     if (!passwordMatch) {
@@ -95,5 +102,63 @@ export class AuthService {
       token,
     };
   }
+
+  /**
+   * Create or login a user via OAuth
+   * If user exists, returns existing user. If not, creates new user.
+   *
+   * @param email - User email from OAuth provider
+   * @param provider - OAuth provider ('google' | 'apple')
+   * @param providerId - Provider's user ID
+   * @returns User data and JWT token
+   */
+  async oauthLogin(
+    email: string,
+    provider: 'google' | 'apple',
+    providerId: string
+  ): Promise<LoginResult> {
+    // First, try to find user by OAuth provider + provider ID
+    let user = await this.userRepo.findByOAuthProvider(provider, providerId);
+
+    // If not found by provider ID, try by email (for existing users who might link OAuth later)
+    if (!user) {
+      user = await this.userRepo.findByEmail(email);
+    }
+
+    if (!user) {
+      // Create new user for OAuth (no password)
+      const newUser = await this.userRepo.createUser({
+        email: email.toLowerCase(),
+        password_hash: null, // OAuth users don't have passwords
+        oauth_provider: provider,
+        oauth_provider_id: providerId,
+      });
+      
+      // Convert to DBUser format for consistency
+      user = {
+        ...newUser,
+        password_hash: null,
+        oauth_provider: provider,
+        oauth_provider_id: providerId,
+      } as DBUser;
+    } else if (!user.oauth_provider || !user.oauth_provider_id) {
+      // Existing user (email/password) linking OAuth account
+      // For now, we'll just log them in with existing account
+      // Future: could update the user record to link OAuth provider
+      // This allows email/password users to also use OAuth
+    }
+
+    // Generate JWT token
+    const token = signToken(user.id);
+
+    // Return user without password_hash
+    const { password_hash: _, ...userWithoutPassword } = user;
+
+    return {
+      user: userWithoutPassword,
+      token,
+    };
+  }
 }
+
 
