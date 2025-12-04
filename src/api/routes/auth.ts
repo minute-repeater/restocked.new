@@ -167,7 +167,11 @@ router.get("/google/callback", async (req: Request, res: Response) => {
     // Create or login user
     const result = await authService.oauthLogin(googleUser.email, 'google', googleUser.providerId);
 
-    logger.info({ email: googleUser.email, userId: result.user.id }, "Google OAuth login successful");
+    logger.info({ 
+      email: googleUser.email, 
+      userId: result.user.id, 
+      provider: 'google' 
+    }, "Google OAuth login successful");
 
     // Redirect to frontend with token
     const frontendCallbackUrl = `${config.frontendUrl}/auth/callback?token=${encodeURIComponent(result.token)}`;
@@ -242,7 +246,11 @@ router.post("/apple/callback", async (req: Request, res: Response) => {
     // Create or login user
     const result = await authService.oauthLogin(appleUser.email, 'apple', appleUser.providerId);
 
-    logger.info({ email: appleUser.email, userId: result.user.id }, "Apple OAuth login successful");
+    logger.info({ 
+      email: appleUser.email, 
+      userId: result.user.id, 
+      provider: 'apple' 
+    }, "Apple OAuth login successful");
 
     // Redirect to frontend with token
     const frontendCallbackUrl = `${config.frontendUrl}/auth/callback?token=${encodeURIComponent(result.token)}`;
