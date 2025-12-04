@@ -13,6 +13,7 @@
     "profile:extractor": "NODE_OPTIONS='--max-old-space-size=8192 --expose-gc --loader ts-node/esm' node scripts/profileExtractor.ts",
     "test:monitoring": "NODE_OPTIONS='--loader ts-node/esm' node scripts/test-monitoring.ts",
     "migrate": "NODE_OPTIONS='--loader ts-node/esm' node scripts/run-migrations.ts",
+    "verify-migrations": "NODE_OPTIONS='--loader ts-node/esm' node scripts/verify-migrations.ts",
     "seed:prod-user": "NODE_OPTIONS='--loader ts-node/esm' node scripts/seed-prod-user.ts"
   },
   "keywords": [
