@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { authApi } from '@/api/auth';
@@ -13,8 +13,15 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuthStore();
+  const { login, token } = useAuthStore();
   const navigate = useNavigate();
+
+  // Redirect to dashboard if already logged in
+  useEffect(() => {
+    if (token) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [token, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,10 +31,9 @@ export function Login() {
     try {
       const response = await authApi.login(email, password);
       login({ user: response.user, token: response.token });
-      navigate('/dashboard', { replace: true });
+      // Navigation will happen via useEffect when token updates
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Login failed');
-    } finally {
       setLoading(false);
     }
   };

@@ -23,15 +23,15 @@ export const useAuthStore = create<AuthState>()(
           token,
           plan: (user as any).plan ?? null,
         });
-        },
+      },
 
-        logout: () => {
+      logout: () => {
         set({
           user: null,
           token: null,
           plan: null,
         });
-        },
+      },
     }),
     {
       name: 'auth-storage',
