@@ -1,4 +1,6 @@
 import "dotenv/config";
+import * as Sentry from "@sentry/node";
+import { expressIntegration, expressErrorHandler } from "@sentry/node";
 import express, { type Express } from "express";
 import cors from "cors";
 import { fileURLToPath } from "url";
@@ -16,11 +18,41 @@ import { postRateLimiter } from "./middleware/rateLimiting.js";
 import { requireAuth } from "./middleware/requireAuth.js";
 import { config } from "../config.js";
 
+// Initialize Sentry at the top, before creating the server
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    integrations: [
+      expressIntegration(),
+    ],
+    // Performance Monitoring
+    tracesSampleRate: 1.0, // Capture 100% of transactions for performance monitoring
+    // Environment
+    environment: process.env.NODE_ENV || config.appEnv,
+    // Release tracking (optional, can be set via environment variable)
+    release: process.env.APP_VERSION || undefined,
+    // Only send stack traces in production (not in dev)
+    beforeSend(event, hint) {
+      // In development, don't send to Sentry (just log to console)
+      if (config.isDevelopment) {
+        console.error("Sentry event (not sent in dev):", event);
+        return null; // Don't send in dev
+      }
+      return event;
+    },
+  });
+} else if (config.isProduction) {
+  console.warn("Sentry DSN not configured. Error monitoring disabled.");
+}
+
 /**
  * Create and configure Express server
  */
 export function createServer(): Express {
   const app = express();
+
+  // Sentry Express integration automatically handles request tracing
+  // No need for separate middleware - expressIntegration() handles it
 
   // CORS middleware - allow requests from specific origins
   const allowedOrigins = config.isProduction
@@ -136,6 +168,9 @@ export function createServer(): Express {
     }
   });
 
+  // Sentry error handler must be before other error handlers
+  app.use(expressErrorHandler());
+
   // Error handling middleware
   app.use(
     (
@@ -145,11 +180,16 @@ export function createServer(): Express {
       next: express.NextFunction
     ) => {
       console.error("API Error:", err);
+      
+      // In production, don't expose stack traces or error details
+      const isProduction = config.isProduction;
+      
       res.status(500).json({
         error: {
           code: "INTERNAL_ERROR",
           message: "Internal server error",
-          details: { message: err.message },
+          // Only include error message in development
+          ...(isProduction ? {} : { details: { message: err.message } }),
         },
       });
     }

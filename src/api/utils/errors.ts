@@ -3,6 +3,8 @@
  * Provides consistent error formatting across the API
  */
 
+import { config } from "../../config.js";
+
 export interface StructuredError {
   code: string;
   message: string;
@@ -89,8 +91,14 @@ export function fetchFailedError(message: string, details?: Record<string, any>)
 
 /**
  * Create error response for internal server error
+ * In production, stack traces are excluded from the response
  */
 export function internalError(message: string, details?: Record<string, any>): ErrorResponse {
+  // In production, filter out stack traces and sensitive details
+  if (config.isProduction && details) {
+    const { stack, ...safeDetails } = details;
+    return createErrorResponse(ErrorCodes.INTERNAL_ERROR, message, Object.keys(safeDetails).length > 0 ? safeDetails : undefined);
+  }
   return createErrorResponse(ErrorCodes.INTERNAL_ERROR, message, details);
 }
 

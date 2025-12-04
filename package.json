@@ -15,7 +15,8 @@
     "test:monitoring": "NODE_OPTIONS='--loader ts-node/esm' node scripts/test-monitoring.ts",
     "migrate": "node ./dist/db/migrate.js",
     "verify-migrations": "NODE_OPTIONS='--loader ts-node/esm' node scripts/verify-migrations.ts",
-    "seed:prod-user": "NODE_OPTIONS='--loader ts-node/esm' node scripts/seed-prod-user.ts"
+    "seed:prod-user": "NODE_OPTIONS='--loader ts-node/esm' node scripts/seed-prod-user.ts",
+    "create-test-user": "NODE_OPTIONS='--loader ts-node/esm' node scripts/create-test-user.ts"
   },
   "keywords": [
     "scraping",
