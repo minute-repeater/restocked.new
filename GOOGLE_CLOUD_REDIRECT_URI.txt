@@ -1,0 +1,4 @@
+# Google Cloud Console - Authorized Redirect URI
+# Copy this EXACT URL and paste into Google Cloud Console → Credentials → OAuth 2.0 Client ID
+
+https://restockednew-production.up.railway.app/auth/google/callback

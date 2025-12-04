@@ -1,0 +1,6 @@
+# Railway Environment Variables - Google OAuth
+# Copy these values and paste into Railway Dashboard → Variables
+
+GOOGLE_CLIENT_ID=YOUR_CLIENT_ID_HERE.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-YOUR_CLIENT_SECRET_HERE
+GOOGLE_REDIRECT_URL=https://restockednew-production.up.railway.app/auth/google/callback
