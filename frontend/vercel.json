@@ -1,10 +1,7 @@
 {
-  "buildCommand": "npm run build",
-  "devCommand": "npm run dev",
-  "outputDirectory": "dist",
-  "framework": "vite",
-  "alias": {
-    "@/*": "./src/*"
+    "buildCommand": "npm run build",
+    "devCommand": "npm run dev",
+    "outputDirectory": "dist",
+    "framework": "vite"
   }
-}
 
