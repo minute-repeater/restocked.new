@@ -28,10 +28,10 @@ export function Login() {
     }
   }, [token, navigate]);
 
-  // Check for error query param (from OAuth redirect)
+  // Check for error query param (from OAuth redirect or other errors)
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const errorParam = urlParams.get('error');
+    const errorParam = urlParams.get('error') || urlParams.get('oauthError');
     if (errorParam) {
       setError(decodeURIComponent(errorParam));
       // Clean up URL

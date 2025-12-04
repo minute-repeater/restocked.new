@@ -21,15 +21,27 @@ export function OAuthCallback() {
   useEffect(() => {
     const handleCallback = async () => {
       try {
+        // Safety check: if OAuth is disabled, redirect to login
+        const googleOAuthEnabled = import.meta.env.VITE_GOOGLE_OAUTH_ENABLED === 'true';
+        const appleOAuthEnabled = import.meta.env.VITE_APPLE_OAUTH_ENABLED === 'true';
+        if (!googleOAuthEnabled && !appleOAuthEnabled) {
+          setError('OAuth is not enabled');
+          setLoading(false);
+          setTimeout(() => {
+            navigate('/login', { replace: true });
+          }, 2000);
+          return;
+        }
+
         const token = searchParams.get('token');
-        const errorParam = searchParams.get('error');
+        const errorParam = searchParams.get('error') || searchParams.get('oauthError');
 
         // Handle error from OAuth provider
         if (errorParam) {
           setError(decodeURIComponent(errorParam));
           setLoading(false);
           setTimeout(() => {
-            navigate('/login', { replace: true });
+            navigate('/login?error=' + encodeURIComponent(decodeURIComponent(errorParam)), { replace: true });
           }, 3000);
           return;
         }
