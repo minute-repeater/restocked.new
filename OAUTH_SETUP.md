@@ -27,17 +27,25 @@ Add the following environment variables to your Railway backend service:
 GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 GOOGLE_REDIRECT_URL=https://your-backend-url.railway.app/auth/google/callback
+# Note: GOOGLE_REDIRECT_URI is also supported as an alias
 ```
+
+**Required:** `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`  
+**Optional:** `GOOGLE_REDIRECT_URL` (defaults to `${BACKEND_URL}/auth/google/callback`)
 
 #### Apple Sign-In
 
 ```bash
-APPLE_CLIENT_ID=com.yourcompany.yourapp
+APPLE_CLIENT_ID=com.yourcompany.yourapp.web  # Service ID, not App ID
 APPLE_TEAM_ID=ABC123DEFG
 APPLE_KEY_ID=XYZ789ABCD
 APPLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
 APPLE_REDIRECT_URL=https://your-backend-url.railway.app/auth/apple/callback
+# Note: APPLE_REDIRECT_URI is also supported as an alias
 ```
+
+**Required:** `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`  
+**Optional:** `APPLE_REDIRECT_URL` (defaults to `${BACKEND_URL}/auth/apple/callback`)
 
 **Note:** For `APPLE_PRIVATE_KEY`, you need to include the full private key with newlines. In Railway, you can paste the key directly (it will handle newlines), or use `\n` to represent newlines.
 
@@ -50,10 +58,16 @@ APPLE_REDIRECT_URL=https://your-backend-url.railway.app/auth/apple/callback
 Add the following to your Vercel frontend environment variables:
 
 ```bash
-VITE_API_BASE_URL=https://your-backend-url.railway.app
+VITE_API_BASE_URL=https://your-backend-url.railway.app  # Already required
+VITE_GOOGLE_OAUTH_ENABLED=true  # Set to 'true' to show Google OAuth button
+VITE_APPLE_OAUTH_ENABLED=true   # Set to 'true' to show Apple OAuth button
 ```
 
-The frontend will automatically use this URL for OAuth redirects.
+**Note:** 
+- If `VITE_GOOGLE_OAUTH_ENABLED` is not set or not 'true', the Google button will be hidden
+- If `VITE_APPLE_OAUTH_ENABLED` is not set or not 'true', the Apple button will be hidden
+- Email/password login always works regardless of OAuth feature flags
+- The frontend will automatically use `VITE_API_BASE_URL` for OAuth redirects
 
 ---
 
@@ -68,8 +82,10 @@ The frontend will automatically use this URL for OAuth redirects.
 5. Configure the OAuth consent screen if prompted
 6. Select **Web application** as the application type
 7. Add authorized redirect URIs:
-   - `https://your-backend-url.railway.app/auth/google/callback`
+   - `https://your-backend-url.railway.app/auth/google/callback` (production)
    - `http://localhost:3000/auth/google/callback` (for local development)
+   
+   **Important:** Replace `your-backend-url.railway.app` with your actual Railway backend URL
 8. Copy the **Client ID** and **Client Secret**
 
 ### 2. Configure Backend
@@ -121,6 +137,8 @@ GOOGLE_REDIRECT_URL=https://your-backend-url.railway.app/auth/google/callback
      - `https://your-backend-url.railway.app`
    - **Return URLs:**
      - `https://your-backend-url.railway.app/auth/apple/callback`
+   
+   **Important:** Replace `your-backend-url.railway.app` with your actual Railway backend URL
 7. Click **Save** and **Continue**, then **Register**
 
 ### 4. Create Key
