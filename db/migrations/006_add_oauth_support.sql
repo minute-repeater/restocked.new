@@ -3,7 +3,20 @@
 -- Created: 2025-12-04
 
 -- Make password_hash nullable to support OAuth users (who don't have passwords)
-ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
+-- This is idempotent: if already nullable, the statement will succeed (no-op)
+DO $$
+BEGIN
+  -- Check if column is NOT NULL before attempting to drop constraint
+  IF EXISTS (
+    SELECT 1 
+    FROM information_schema.columns 
+    WHERE table_name = 'users' 
+    AND column_name = 'password_hash' 
+    AND is_nullable = 'NO'
+  ) THEN
+    ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
+  END IF;
+END $$;
 
 -- Add OAuth provider tracking fields
 ALTER TABLE users ADD COLUMN IF NOT EXISTS oauth_provider TEXT;
