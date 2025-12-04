@@ -14,6 +14,18 @@ interface AppleConfig {
 }
 
 /**
+ * Check if Apple OAuth is configured
+ */
+export function isAppleOAuthConfigured(): boolean {
+  return !!(
+    process.env.APPLE_CLIENT_ID &&
+    process.env.APPLE_TEAM_ID &&
+    process.env.APPLE_KEY_ID &&
+    process.env.APPLE_PRIVATE_KEY
+  );
+}
+
+/**
  * Get Apple OAuth configuration from environment variables
  */
 function getAppleConfig(): AppleConfig {
@@ -21,7 +33,7 @@ function getAppleConfig(): AppleConfig {
   const teamId = process.env.APPLE_TEAM_ID;
   const keyId = process.env.APPLE_KEY_ID;
   const privateKey = process.env.APPLE_PRIVATE_KEY;
-  const redirectUrl = process.env.APPLE_REDIRECT_URL || `${config.backendUrl}/auth/apple/callback`;
+  const redirectUrl = process.env.APPLE_REDIRECT_URL || process.env.APPLE_REDIRECT_URI || `${config.backendUrl}/auth/apple/callback`;
 
   if (!clientId || !teamId || !keyId || !privateKey) {
     throw new Error("Apple OAuth is not fully configured. Missing required environment variables.");
@@ -63,8 +75,13 @@ function generateAppleClientSecret(): string {
  * 
  * @param state - Optional state parameter for CSRF protection
  * @returns Authorization URL
+ * @throws Error if Apple OAuth is not configured
  */
 export function getAppleAuthUrl(state?: string): string {
+  if (!isAppleOAuthConfigured()) {
+    throw new Error("Apple OAuth is not configured. Missing required environment variables.");
+  }
+  
   const appleConfig = getAppleConfig();
 
   const params = new URLSearchParams({
@@ -97,6 +114,10 @@ export async function handleAppleCallback(
   providerId: string;
   name?: string;
 }> {
+  if (!isAppleOAuthConfigured()) {
+    throw new Error("Apple OAuth is not configured. Missing required environment variables.");
+  }
+  
   const appleConfig = getAppleConfig();
 
   try {

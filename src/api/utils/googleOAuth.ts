@@ -5,23 +5,39 @@ import { config } from "../../config.js";
 /**
  * Google OAuth2 configuration
  */
-const oauth2Client = new google.auth.OAuth2(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  process.env.GOOGLE_REDIRECT_URL || `${config.backendUrl}/auth/google/callback`
-);
+// Lazy initialization of OAuth2 client to avoid errors if env vars are missing
+function getOAuth2Client() {
+  const redirectUrl = process.env.GOOGLE_REDIRECT_URL || process.env.GOOGLE_REDIRECT_URI || `${config.backendUrl}/auth/google/callback`;
+  return new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    redirectUrl
+  );
+}
+
+/**
+ * Check if Google OAuth is configured
+ */
+export function isGoogleOAuthConfigured(): boolean {
+  return !!(
+    process.env.GOOGLE_CLIENT_ID &&
+    process.env.GOOGLE_CLIENT_SECRET
+  );
+}
 
 /**
  * Generate Google OAuth authorization URL
  * 
  * @param state - Optional state parameter for CSRF protection
  * @returns Authorization URL
+ * @throws Error if Google OAuth is not configured
  */
 export function getGoogleAuthUrl(state?: string): string {
-  if (!process.env.GOOGLE_CLIENT_ID) {
-    throw new Error("GOOGLE_CLIENT_ID is not configured");
+  if (!isGoogleOAuthConfigured()) {
+    throw new Error("Google OAuth is not configured. Missing required environment variables.");
   }
 
+  const oauth2Client = getOAuth2Client();
   const scopes = [
     "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/userinfo.profile",
@@ -50,11 +66,12 @@ export async function handleGoogleCallback(code: string): Promise<{
   name?: string;
   picture?: string;
 }> {
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-    throw new Error("Google OAuth is not configured");
+  if (!isGoogleOAuthConfigured()) {
+    throw new Error("Google OAuth is not configured. Missing required environment variables.");
   }
 
   try {
+    const oauth2Client = getOAuth2Client();
     // Exchange code for tokens
     const { tokens } = await oauth2Client.getToken(code);
     oauth2Client.setCredentials(tokens);

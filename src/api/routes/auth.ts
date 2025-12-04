@@ -11,8 +11,8 @@ import {
   formatError,
 } from "../utils/errors.js";
 import { postRateLimiter } from "../middleware/rateLimiting.js";
-import { getGoogleAuthUrl, handleGoogleCallback } from "../utils/googleOAuth.js";
-import { getAppleAuthUrl, handleAppleCallback } from "../utils/appleOAuth.js";
+import { getGoogleAuthUrl, handleGoogleCallback, isGoogleOAuthConfigured } from "../utils/googleOAuth.js";
+import { getAppleAuthUrl, handleAppleCallback, isAppleOAuthConfigured } from "../utils/appleOAuth.js";
 import { config } from "../../config.js";
 
 const router = Router();
@@ -116,6 +116,16 @@ router.post("/login", postRateLimiter, async (req: Request, res: Response) => {
  */
 router.get("/google/url", async (req: Request, res: Response) => {
   try {
+    if (!isGoogleOAuthConfigured()) {
+      logger.warn({ path: "/auth/google/url" }, "Google OAuth not configured");
+      return res.status(400).json(
+        createErrorResponse(
+          ErrorCodes.INVALID_REQUEST,
+          "Google OAuth is not configured"
+        )
+      );
+    }
+
     const authUrl = getGoogleAuthUrl();
     res.json({ url: authUrl });
   } catch (error: any) {
@@ -174,6 +184,16 @@ router.get("/google/callback", async (req: Request, res: Response) => {
  */
 router.get("/apple/url", async (req: Request, res: Response) => {
   try {
+    if (!isAppleOAuthConfigured()) {
+      logger.warn({ path: "/auth/apple/url" }, "Apple OAuth not configured");
+      return res.status(400).json(
+        createErrorResponse(
+          ErrorCodes.INVALID_REQUEST,
+          "Apple OAuth is not configured"
+        )
+      );
+    }
+
     const authUrl = getAppleAuthUrl();
     res.json({ url: authUrl });
   } catch (error: any) {
