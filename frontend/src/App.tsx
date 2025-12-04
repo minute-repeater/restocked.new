@@ -7,6 +7,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { Login } from '@/pages/Login';
 import { Register } from '@/pages/Register';
 import { Dashboard } from '@/pages/Dashboard';
+import { OAuthCallback } from '@/pages/OAuthCallback';
 import { ProductDetails } from '@/pages/ProductDetails';
 import { ProductHistory } from '@/pages/ProductHistory';
 import { Notifications } from '@/pages/Notifications';
@@ -39,6 +40,10 @@ function App() {
             <Route
               path="/register"
               element={token ? <Navigate to="/dashboard" replace /> : <Register />}
+            />
+            <Route
+              path="/auth/callback"
+              element={<OAuthCallback />}
             />
 
             {/* Protected app routes */}

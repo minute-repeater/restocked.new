@@ -17,5 +17,16 @@ export const authApi = {
     });
     return response.data;
   },
+
+  getGoogleAuthUrl: async (): Promise<{ url: string }> => {
+    const response = await apiClient.get<{ url: string }>('/auth/google/url');
+    return response.data;
+  },
+
+  getAppleAuthUrl: async (): Promise<{ url: string }> => {
+    const response = await apiClient.get<{ url: string }>('/auth/apple/url');
+    return response.data;
+  },
 };
+
 
