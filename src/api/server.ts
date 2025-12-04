@@ -178,19 +178,18 @@ if (isMainModule) {
   const app = createServer();
   const port = config.port;
   
-  // Test database connection before starting server
-  (async () => {
-    try {
-      const { query } = await import("../db/client.js");
-      await query("SELECT 1");
-      console.log(`[Server] Database connected (${config.appEnv})`);
-    } catch (error: any) {
-      console.error("Database connection failed:", error.message);
-      process.exit(1);
-    }
-  })();
+  // Test database connection before starting server (BLOCKING)
+  // This must complete before server starts listening to prevent 502 errors
+  try {
+    const { query } = await import("../db/client.js");
+    await query("SELECT 1");
+    console.log(`[Server] Database connected (${config.appEnv})`);
+  } catch (error: any) {
+    console.error("Database connection failed:", error.message);
+    process.exit(1);
+  }
   
-  // Start scheduler service if enabled
+  // Start scheduler service if enabled (non-blocking)
   (async () => {
     try {
       const { schedulerService } = await import("../scheduler/schedulerService.js");
@@ -208,7 +207,7 @@ if (isMainModule) {
     }
   })();
 
-  // Start email delivery scheduler (uses config)
+  // Start email delivery scheduler (uses config) (non-blocking)
   (async () => {
     try {
       const { emailDeliveryScheduler } = await import("../jobs/emailDeliveryScheduler.js");
@@ -222,7 +221,7 @@ if (isMainModule) {
     }
   })();
 
-  // Start check scheduler (uses config)
+  // Start check scheduler (uses config) (non-blocking)
   (async () => {
     try {
       const { checkScheduler } = await import("../jobs/checkScheduler.js");
@@ -236,6 +235,7 @@ if (isMainModule) {
     }
   })();
   
+  // Start server ONLY after database connection is verified
   app.listen(port, () => {
     console.log(`Server running on port ${port}`);
   });
