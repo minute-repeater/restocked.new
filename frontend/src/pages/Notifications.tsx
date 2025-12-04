@@ -28,7 +28,7 @@ export function Notifications() {
   const handleMarkAllAsRead = async () => {
     setMarkingAll(true);
     try {
-      await markAsReadMutation.mutateAsync();
+      await markAsReadMutation.mutateAsync([]);
     } finally {
       setMarkingAll(false);
     }

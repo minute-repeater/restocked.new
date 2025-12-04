@@ -2,12 +2,13 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 import { X } from "lucide-react"
 
-export interface ToastProps {
+export interface ToastProps extends React.HTMLAttributes<HTMLDivElement> {
   id?: string;
   title?: string;
   description?: string;
   variant?: "default" | "success" | "error";
   onClose?: () => void;
+  className?: string;
 }
 
 const Toast = React.forwardRef<HTMLDivElement, ToastProps>(
