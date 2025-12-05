@@ -56,116 +56,14 @@ export function createServer(): Express {
   // Sentry Express integration automatically handles request tracing
   // No need for separate middleware - expressIntegration() handles it
 
-  // CORS middleware - allow requests from specific origins
-  const allowedOrigins: string[] = [];
-  
-  // Add backend URL itself (for same-origin requests and OAuth callbacks)
-  if (config.backendUrl) {
-    allowedOrigins.push(config.backendUrl);
-  }
-  
-  // Fallback: Add Railway production URL if BACKEND_URL env var is not set
-  // This ensures OAuth callbacks work even if BACKEND_URL is missing
-  if (config.isProduction && !config.backendUrl) {
-    const railwayUrl = "https://restockednew-production.up.railway.app";
-    allowedOrigins.push(railwayUrl);
-    logger.warn({ railwayUrl }, "BACKEND_URL not set, using hardcoded Railway URL for CORS");
-  }
-  
-  // Add FRONTEND_URL from environment if set
-  if (process.env.FRONTEND_URL) {
-    allowedOrigins.push(process.env.FRONTEND_URL);
-  }
-  
-  // Add production origins
-  allowedOrigins.push(
-    "https://app.restocked.now",
-    "https://restocked.now"
-  );
-  
-  // Add development origins
-  if (!config.isProduction) {
-    allowedOrigins.push(
-      "http://localhost:3000",
-      "http://localhost:5173"
-    );
-    if (config.frontendUrl) {
-      allowedOrigins.push(config.frontendUrl);
-    }
-  }
-
-  // Log allowed origins for debugging (without sensitive data)
-  logger.info({ 
-    allowedOriginsCount: allowedOrigins.length,
-    hasBackendUrl: !!config.backendUrl,
-    isProduction: config.isProduction
-  }, "CORS configuration initialized");
-
+  // CORS middleware - Temporarily allow all origins to unblock OAuth
+  // TODO: Harden CORS once OAuth flow is stable
   app.use(
     cors({
-      origin: (origin, callback) => {
-        // Diagnostic logging: log what origin we received (only in development or for rejections)
-        if (config.isDevelopment) {
-          logger.debug({
-            origin: origin || "(undefined)",
-            originType: typeof origin,
-          }, "CORS origin check");
-        }
-
-        // Allow requests with NO origin (undefined) - for curl, mobile, OAuth redirects, direct browser navigation
-        if (!origin) {
-          if (config.isDevelopment) {
-            logger.debug({ decision: "allowed", reason: "no_origin" }, "CORS: Allowing request (no origin)");
-          }
-          return callback(null, true);
-        }
-
-        // Allow requests with origin === "null" (string literal) - some browsers send this for same-origin requests
-        // This is a common browser behavior when opening URLs directly
-        if (origin === "null" || origin === null) {
-          if (config.isDevelopment) {
-            logger.debug({ decision: "allowed", reason: "null_origin" }, "CORS: Allowing request (null origin string)");
-          }
-          return callback(null, true);
-        }
-        
-        // If origin EXACTLY matches any allowedOrigins entry, allow it
-        if (allowedOrigins.includes(origin)) {
-          if (config.isDevelopment) {
-            logger.debug({ decision: "allowed", reason: "exact_match" }, "CORS: Allowing request (exact match)");
-          }
-          return callback(null, true);
-        }
-        
-        // If origin ends with ".vercel.app", allow it (for Vercel preview deployments)
-        if (origin.endsWith('.vercel.app')) {
-          if (config.isDevelopment) {
-            logger.debug({ decision: "allowed", reason: "vercel_wildcard" }, "CORS: Allowing request (.vercel.app)");
-          }
-          return callback(null, true);
-        }
-        
-        // If origin ends with ".up.railway.app", allow it (for Railway deployments)
-        if (origin.endsWith('.up.railway.app')) {
-          if (config.isDevelopment) {
-            logger.debug({ decision: "allowed", reason: "railway_wildcard" }, "CORS: Allowing request (.up.railway.app)");
-          }
-          return callback(null, true);
-        }
-        
-        // Log rejected origin for debugging (in production, log without exposing sensitive data)
-        logger.warn({
-          origin: config.isProduction ? origin.substring(0, 50) + "..." : origin,
-          allowedOriginsCount: allowedOrigins.length,
-          decision: "rejected",
-        }, "CORS request rejected");
-        
-        // Otherwise reject
-        callback(new Error("Not allowed by CORS"));
-      },
+      origin: (_origin, callback) => callback(null, true),
       credentials: true,
-      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-      allowedHeaders: ["Content-Type", "Authorization"],
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
       preflightContinue: false,
       optionsSuccessStatus: 204,
     })
