@@ -109,6 +109,8 @@ router.post("/login", postRateLimiter, async (req: Request, res: Response) => {
   }
 });
 
+// OAuth routes disabled
+if (false) {
 /**
  * GET /auth/google/config-status
  * Check Google OAuth configuration status (diagnostic endpoint)
@@ -121,9 +123,15 @@ router.get("/google/config-status", async (req: Request, res: Response) => {
     const googleOAuthConfigured = isGoogleOAuthConfigured();
     
     // Get redirect URL (same logic as googleOAuth.ts)
-    const redirectUrl = process.env.GOOGLE_REDIRECT_URL || 
-                       process.env.GOOGLE_REDIRECT_URI || 
-                       `${config.backendUrl}/auth/google/callback`;
+    let redirectUrl: string;
+    if (process.env.GOOGLE_REDIRECT_URL) {
+      redirectUrl = process.env.GOOGLE_REDIRECT_URL;
+    } else if (process.env.GOOGLE_REDIRECT_URI) {
+      redirectUrl = process.env.GOOGLE_REDIRECT_URI;
+    } else {
+      const backendUrl = config.backendUrl || process.env.BACKEND_URL || "https://restockednew-production.up.railway.app";
+      redirectUrl = `${backendUrl}/auth/google/callback`;
+    }
 
     res.json({
       googleOAuthConfigured,
@@ -295,6 +303,7 @@ router.post("/apple/callback", async (req: Request, res: Response) => {
     res.redirect(frontendErrorUrl);
   }
 });
+} // End of OAuth routes (disabled)
 
 export { router as authRoutes };
 
