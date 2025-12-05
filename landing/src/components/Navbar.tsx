@@ -1,5 +1,6 @@
 import { Package, Menu, X } from 'lucide-react'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -15,15 +16,15 @@ export function Navbar() {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
-            <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">
+            <Link to="/features" className="text-muted-foreground hover:text-foreground transition-colors">
               Features
-            </a>
-            <a href="#how-it-works" className="text-muted-foreground hover:text-foreground transition-colors">
+            </Link>
+            <Link to="/how-it-works" className="text-muted-foreground hover:text-foreground transition-colors">
               How It Works
-            </a>
-            <a href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">
+            </Link>
+            <Link to="/pricing" className="text-muted-foreground hover:text-foreground transition-colors">
               Pricing
-            </a>
+            </Link>
             <a
               href={import.meta.env.VITE_APP_URL ? `${import.meta.env.VITE_APP_URL}/login` : "/login"}
               className="px-4 py-2 text-primary border border-primary rounded-lg hover:bg-primary hover:text-white transition-colors"
@@ -52,27 +53,27 @@ export function Navbar() {
         {mobileMenuOpen && (
           <div className="md:hidden py-4 border-t border-border">
             <div className="flex flex-col space-y-4">
-              <a
-                href="#features"
+              <Link
+                to="/features"
                 className="text-muted-foreground hover:text-foreground transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Features
-              </a>
-              <a
-                href="#how-it-works"
+              </Link>
+              <Link
+                to="/how-it-works"
                 className="text-muted-foreground hover:text-foreground transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 How It Works
-              </a>
-              <a
-                href="#pricing"
+              </Link>
+              <Link
+                to="/pricing"
                 className="text-muted-foreground hover:text-foreground transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Pricing
-              </a>
+              </Link>
               <div className="pt-4 space-y-2">
                 <a
                   href={import.meta.env.VITE_APP_URL ? `${import.meta.env.VITE_APP_URL}/login` : "/login"}
