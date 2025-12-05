@@ -104,32 +104,61 @@ export function createServer(): Express {
   app.use(
     cors({
       origin: (origin, callback) => {
-        // Allow requests with NO origin (for curl, mobile, OAuth redirects, direct browser navigation)
+        // Diagnostic logging: log what origin we received (only in development or for rejections)
+        if (config.isDevelopment) {
+          logger.debug({
+            origin: origin || "(undefined)",
+            originType: typeof origin,
+          }, "CORS origin check");
+        }
+
+        // Allow requests with NO origin (undefined) - for curl, mobile, OAuth redirects, direct browser navigation
         if (!origin) {
+          if (config.isDevelopment) {
+            logger.debug({ decision: "allowed", reason: "no_origin" }, "CORS: Allowing request (no origin)");
+          }
+          return callback(null, true);
+        }
+
+        // Allow requests with origin === "null" (string literal) - some browsers send this for same-origin requests
+        // This is a common browser behavior when opening URLs directly
+        if (origin === "null" || origin === null) {
+          if (config.isDevelopment) {
+            logger.debug({ decision: "allowed", reason: "null_origin" }, "CORS: Allowing request (null origin string)");
+          }
           return callback(null, true);
         }
         
         // If origin EXACTLY matches any allowedOrigins entry, allow it
         if (allowedOrigins.includes(origin)) {
+          if (config.isDevelopment) {
+            logger.debug({ decision: "allowed", reason: "exact_match" }, "CORS: Allowing request (exact match)");
+          }
           return callback(null, true);
         }
         
         // If origin ends with ".vercel.app", allow it (for Vercel preview deployments)
         if (origin.endsWith('.vercel.app')) {
+          if (config.isDevelopment) {
+            logger.debug({ decision: "allowed", reason: "vercel_wildcard" }, "CORS: Allowing request (.vercel.app)");
+          }
           return callback(null, true);
         }
         
         // If origin ends with ".up.railway.app", allow it (for Railway deployments)
         if (origin.endsWith('.up.railway.app')) {
+          if (config.isDevelopment) {
+            logger.debug({ decision: "allowed", reason: "railway_wildcard" }, "CORS: Allowing request (.up.railway.app)");
+          }
           return callback(null, true);
         }
         
         // Log rejected origin for debugging (in production, log without exposing sensitive data)
-        if (config.isProduction) {
-          logger.warn({ origin: origin.substring(0, 50) + "..." }, "CORS request rejected");
-        } else {
-          logger.warn({ origin, allowedOrigins }, "CORS request rejected");
-        }
+        logger.warn({
+          origin: config.isProduction ? origin.substring(0, 50) + "..." : origin,
+          allowedOriginsCount: allowedOrigins.length,
+          decision: "rejected",
+        }, "CORS request rejected");
         
         // Otherwise reject
         callback(new Error("Not allowed by CORS"));
