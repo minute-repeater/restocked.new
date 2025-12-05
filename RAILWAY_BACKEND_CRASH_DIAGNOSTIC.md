@@ -388,3 +388,5 @@ app.listen(port, () => {
 **Confidence:** 95% - Based on code analysis, this is the most likely cause  
 **Next Step:** Fix database connection check to be blocking
 
+
+

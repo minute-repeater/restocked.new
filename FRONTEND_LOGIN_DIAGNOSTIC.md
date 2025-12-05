@@ -332,3 +332,6 @@ Verify that `createUser` in `userRepository.ts` includes `plan` in RETURNING cla
 3. **Test login again** from frontend
 4. **Check browser console** for any TypeScript errors
 
+
+
+

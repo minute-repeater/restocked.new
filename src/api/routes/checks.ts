@@ -5,6 +5,7 @@ import { extractProductShell } from "../../extractor/index.js";
 import { ProductRepository } from "../../db/repositories/productRepository.js";
 import { VariantRepository } from "../../db/repositories/variantRepository.js";
 import { ProductIngestionService } from "../../services/productIngestionService.js";
+import { logger } from "../utils/logger.js";
 import type { CheckRunResponse, ProductResponse } from "../types.js";
 import { validateURL } from "../utils/urlValidation.js";
 import {
@@ -13,6 +14,7 @@ import {
   notFoundError,
   fetchFailedError,
   internalError,
+  formatError,
 } from "../utils/errors.js";
 import { postRateLimiter } from "../middleware/rateLimiting.js";
 
@@ -112,7 +114,7 @@ router.post("/run", postRateLimiter, async (req: Request, res: Response) => {
 
     res.status(200).json(response);
   } catch (error: any) {
-    console.error("Error in POST /checks/run:", error);
+    logger.error({ error: error.message, path: "/checks/run" }, "Error in POST /checks/run");
 
     // Create failed check_run if we have a productId
     if (productId) {
@@ -128,15 +130,16 @@ router.post("/run", postRateLimiter, async (req: Request, res: Response) => {
             finishedAt.toISOString(),
             "failed",
             error.message,
-            JSON.stringify({ error: error.stack }),
+            JSON.stringify({ error: error.message }),
           ]
         );
       } catch (checkRunError) {
-        console.error("Failed to create check_run record:", checkRunError);
+        logger.error({ error: checkRunError instanceof Error ? checkRunError.message : String(checkRunError) }, "Failed to create check_run record");
       }
     }
 
-    res.status(500).json(internalError(error.message, { stack: error.stack }));
+    const errorResponse = formatError(error);
+    res.status(500).json(errorResponse);
   }
 });
 
@@ -230,7 +233,7 @@ router.post("/:productId", postRateLimiter, async (req: Request, res: Response) 
 
     res.status(200).json(response);
   } catch (error: any) {
-    console.error("Error in POST /checks/:productId:", error);
+    logger.error({ error: error.message, productId, path: "/checks/:productId" }, "Error in POST /checks/:productId");
 
     // Create failed check_run
     try {
@@ -248,11 +251,15 @@ router.post("/:productId", postRateLimiter, async (req: Request, res: Response) 
           JSON.stringify({ error: error.stack }),
         ]
       );
-    } catch (checkRunError) {
-      console.error("Failed to create check_run record:", checkRunError);
-    }
+      } catch (checkRunError) {
+        logger.error({ 
+          error: checkRunError instanceof Error ? checkRunError.message : String(checkRunError),
+          productId 
+        }, "Failed to create check_run record");
+      }
 
-    res.status(500).json(internalError(error.message, { stack: error.stack }));
+    const errorResponse = formatError(error);
+    res.status(500).json(errorResponse);
   }
 });
 

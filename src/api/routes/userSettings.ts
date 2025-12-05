@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { UserNotificationSettingsRepository } from "../../db/repositories/userNotificationSettingsRepository.js";
-import { internalError, invalidRequestError } from "../utils/errors.js";
+import { internalError, invalidRequestError, formatError } from "../utils/errors.js";
+import { logger } from "../utils/logger.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { z } from "zod";
 
@@ -34,8 +35,10 @@ router.get("/notifications", async (req: Request, res: Response) => {
       settings,
     });
   } catch (error: any) {
-    console.error("Error in GET /me/settings/notifications:", error);
-    res.status(500).json(internalError(error.message, { stack: error.stack }));
+    const userId = req.user?.id;
+    logger.error({ error: error.message, userId, path: "/me/settings/notifications" }, "Error in GET /me/settings/notifications");
+    const errorResponse = formatError(error);
+    res.status(500).json(errorResponse);
   }
 });
 
@@ -68,8 +71,10 @@ router.post("/notifications", async (req: Request, res: Response) => {
       settings: updatedSettings,
     });
   } catch (error: any) {
-    console.error("Error in POST /me/settings/notifications:", error);
-    res.status(500).json(internalError(error.message, { stack: error.stack }));
+    const userId = req.user?.id;
+    logger.error({ error: error.message, userId, path: "/me/settings/notifications" }, "Error in POST /me/settings/notifications");
+    const errorResponse = formatError(error);
+    res.status(500).json(errorResponse);
   }
 });
 

@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireAdmin } from "../middleware/requireAdmin.js";
 import { schedulerService } from "../../scheduler/schedulerService.js";
+import { logger } from "../utils/logger.js";
 import { SchedulerLogRepository } from "../../db/repositories/schedulerLogRepository.js";
 import { UserRepository } from "../../db/repositories/userRepository.js";
 import { query } from "../../db/client.js";
@@ -10,6 +11,7 @@ import {
   notFoundError,
   internalError,
   forbiddenError,
+  formatError,
 } from "../utils/errors.js";
 import { checkScheduler } from "../../jobs/checkScheduler.js";
 import { NotificationRepository } from "../../db/repositories/notificationRepository.js";
@@ -47,8 +49,9 @@ router.get("/scheduler/status", async (req: Request, res: Response) => {
         : null,
     });
   } catch (error: any) {
-    console.error("Error in GET /admin/scheduler/status:", error);
-    res.status(500).json(internalError(error.message, { stack: error.stack }));
+    logger.error({ error: error.message, path: "/admin/scheduler/status" }, "Error in GET /admin/scheduler/status");
+    const errorResponse = formatError(error);
+    res.status(500).json(errorResponse);
   }
 });
 
@@ -60,7 +63,7 @@ router.post("/scheduler/run-now", async (req: Request, res: Response) => {
   try {
     // Run scheduler check in background
     schedulerService.runNow().catch((error) => {
-      console.error("[Admin] Error running scheduler manually:", error);
+      logger.error({ error: error.message }, "Error running scheduler manually");
     });
 
     res.json({
@@ -69,7 +72,7 @@ router.post("/scheduler/run-now", async (req: Request, res: Response) => {
       status: schedulerService.getStatus(),
     });
   } catch (error: any) {
-    console.error("Error in POST /admin/scheduler/run-now:", error);
+    logger.error({ error: error.message, path: "/admin/scheduler/run-now" }, "Error in POST /admin/scheduler/run-now");
     
     if (error.message.includes("already running")) {
       return res.status(409).json(
@@ -77,7 +80,8 @@ router.post("/scheduler/run-now", async (req: Request, res: Response) => {
       );
     }
 
-    res.status(500).json(internalError(error.message, { stack: error.stack }));
+    const errorResponse = formatError(error);
+    res.status(500).json(errorResponse);
   }
 });
 
@@ -93,7 +97,7 @@ router.post("/checks/run-now", async (req: Request, res: Response) => {
       );
     }
 
-    console.log("[Admin] Manual check run triggered");
+    logger.info("Manual check run triggered");
 
     // Run checks synchronously and wait for results
     const result = await checkScheduler.runChecks();
@@ -128,7 +132,7 @@ router.post("/checks/run-now", async (req: Request, res: Response) => {
       errors: result.errors.length > 0 ? result.errors : [],
     });
   } catch (error: any) {
-    console.error("Error in POST /admin/checks/run-now:", error);
+    logger.error({ error: error.message, path: "/admin/checks/run-now" }, "Error in POST /admin/checks/run-now");
     
     if (error.message.includes("already running")) {
       return res.status(409).json(
@@ -136,7 +140,8 @@ router.post("/checks/run-now", async (req: Request, res: Response) => {
       );
     }
 
-    res.status(500).json(internalError(error.message, { stack: error.stack }));
+    const errorResponse = formatError(error);
+    res.status(500).json(errorResponse);
   }
 });
 
@@ -178,8 +183,10 @@ router.post("/users/:id/promote", async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error("Error in POST /admin/users/:id/promote:", error);
-    res.status(500).json(internalError(error.message, { stack: error.stack }));
+    const userId = parseInt(req.params.id, 10);
+    logger.error({ error: error.message, userId, path: "/admin/users/:id/promote" }, "Error in POST /admin/users/:id/promote");
+    const errorResponse = formatError(error);
+    res.status(500).json(errorResponse);
   }
 });
 
@@ -254,8 +261,9 @@ router.get("/checks/recent", async (req: Request, res: Response) => {
       limit,
     });
   } catch (error: any) {
-    console.error("Error in GET /admin/checks/recent:", error);
-    res.status(500).json(internalError(error.message, { stack: error.stack }));
+    logger.error({ error: error.message, path: "/admin/checks/recent" }, "Error in GET /admin/checks/recent");
+    const errorResponse = formatError(error);
+    res.status(500).json(errorResponse);
   }
 });
 
@@ -314,8 +322,9 @@ router.get("/checks/stats", async (req: Request, res: Response) => {
       statusBreakdown: statusBreakdown.rows,
     });
   } catch (error: any) {
-    console.error("Error in GET /admin/checks/stats:", error);
-    res.status(500).json(internalError(error.message, { stack: error.stack }));
+    logger.error({ error: error.message, path: "/admin/checks/stats" }, "Error in GET /admin/checks/stats");
+    const errorResponse = formatError(error);
+    res.status(500).json(errorResponse);
   }
 });
 
@@ -376,8 +385,9 @@ router.get("/checks/slow", async (req: Request, res: Response) => {
       limit,
     });
   } catch (error: any) {
-    console.error("Error in GET /admin/checks/slow:", error);
-    res.status(500).json(internalError(error.message, { stack: error.stack }));
+    logger.error({ error: error.message, path: "/admin/checks/slow" }, "Error in GET /admin/checks/slow");
+    const errorResponse = formatError(error);
+    res.status(500).json(errorResponse);
   }
 });
 

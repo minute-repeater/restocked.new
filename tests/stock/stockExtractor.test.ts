@@ -191,3 +191,6 @@ async function testStockExtractor() {
 testStockExtractor().catch(console.error);
 
 
+
+
+

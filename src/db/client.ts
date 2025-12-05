@@ -1,4 +1,5 @@
 import { Pool, PoolClient, QueryResult, QueryResultRow } from "pg";
+import { logger } from "../api/utils/logger.js";
 
 /**
  * PostgreSQL connection pool
@@ -38,16 +39,21 @@ export async function query<T extends QueryResultRow = QueryResultRow>(
       const duration = Date.now() - startTime;
       // Truncate long queries for readability
       const queryPreview = text.length > 100 ? text.substring(0, 100) + "..." : text;
-      console.log(`[DB] ${duration}ms ${queryPreview}`);
+      logger.debug({
+        duration: `${duration}ms`,
+        query: queryPreview,
+      }, "Database query");
     }
 
     return result;
   } catch (error) {
-    if (isDevMode) {
-      const duration = Date.now() - startTime;
-      const queryPreview = text.length > 100 ? text.substring(0, 100) + "..." : text;
-      console.error(`[DB] ${duration}ms ERROR ${queryPreview}`, error);
-    }
+    const duration = Date.now() - startTime;
+    const queryPreview = text.length > 100 ? text.substring(0, 100) + "..." : text;
+    logger.error({
+      duration: `${duration}ms`,
+      query: queryPreview,
+      error: error instanceof Error ? error.message : String(error),
+    }, "Database query error");
     throw error;
   }
 }

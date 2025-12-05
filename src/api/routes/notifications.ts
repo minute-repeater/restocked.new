@@ -1,9 +1,11 @@
 import { Router, type Request, type Response } from "express";
 import { NotificationRepository } from "../../db/repositories/notificationRepository.js";
 import { UserNotificationSettingsRepository } from "../../db/repositories/userNotificationSettingsRepository.js";
+import { logger } from "../utils/logger.js";
 import {
   invalidRequestError,
   internalError,
+  formatError,
 } from "../utils/errors.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 
@@ -46,7 +48,7 @@ router.get("/", async (req: Request, res: Response) => {
 
     const unreadCount = await notificationRepo.getUnreadCount(userId);
 
-    console.log(`[NOTIFICATION] Unread count for user ${userId}: ${unreadCount}`);
+    logger.debug({ userId, unreadCount }, "Notification unread count");
 
     res.json({
       notifications,
@@ -59,8 +61,10 @@ router.get("/", async (req: Request, res: Response) => {
       unreadCount, // Also include camelCase for backward compatibility
     });
   } catch (error: any) {
-    console.error("Error in GET /me/notifications:", error);
-    res.status(500).json(internalError(error.message, { stack: error.stack }));
+    const userId = req.user?.id;
+    logger.error({ error: error.message, userId, path: "/me/notifications" }, "Error in GET /me/notifications");
+    const errorResponse = formatError(error);
+    res.status(500).json(errorResponse);
   }
 });
 
@@ -91,8 +95,10 @@ router.post("/mark-read", async (req: Request, res: Response) => {
       markedCount: count,
     });
   } catch (error: any) {
-    console.error("Error in POST /me/notifications/mark-read:", error);
-    res.status(500).json(internalError(error.message, { stack: error.stack }));
+    const userId = req.user?.id;
+    logger.error({ error: error.message, userId, path: "/me/notifications/mark-read" }, "Error in POST /me/notifications/mark-read");
+    const errorResponse = formatError(error);
+    res.status(500).json(errorResponse);
   }
 });
 

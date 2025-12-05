@@ -2,6 +2,7 @@ import { type Request, type Response, type NextFunction } from "express";
 import { requireAuth } from "./requireAuth.js";
 import { UserRepository } from "../../db/repositories/userRepository.js";
 import { createErrorResponse, ErrorCodes } from "../utils/errors.js";
+import { logger } from "../utils/logger.js";
 
 /**
  * Middleware to require admin role
@@ -36,7 +37,7 @@ export async function requireAdmin(
     // Dev mode override: allow if config.enableDevAdmin is true
     const { config } = await import("../../config.js");
     if (config.enableDevAdmin) {
-      console.log(`[requireAdmin] Dev mode override enabled for user ${req.user.id}`);
+      logger.debug({ userId: req.user.id }, "Dev mode override enabled for admin access");
       next();
       return;
     }

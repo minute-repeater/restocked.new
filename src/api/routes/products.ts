@@ -4,6 +4,7 @@ import { extractProductShell } from "../../extractor/index.js";
 import { ProductRepository } from "../../db/repositories/productRepository.js";
 import { VariantRepository } from "../../db/repositories/variantRepository.js";
 import { ProductIngestionService } from "../../services/productIngestionService.js";
+import { logger } from "../utils/logger.js";
 import type { ProductResponse } from "../types.js";
 import { validateURL } from "../utils/urlValidation.js";
 import {
@@ -12,6 +13,7 @@ import {
   notFoundError,
   fetchFailedError,
   internalError,
+  formatError,
 } from "../utils/errors.js";
 import { postRateLimiter } from "../middleware/rateLimiting.js";
 import { requireAuth } from "../middleware/requireAuth.js";
@@ -65,8 +67,9 @@ router.post("/", postRateLimiter, async (req: Request, res: Response) => {
 
     res.status(201).json(response);
   } catch (error: any) {
-    console.error("Error in POST /products:", error);
-    res.status(500).json(internalError(error.message, { stack: error.stack }));
+    logger.error({ error: error.message, path: "/products" }, "Error in POST /products");
+    const errorResponse = formatError(error);
+    res.status(500).json(errorResponse);
   }
 });
 
@@ -99,7 +102,8 @@ router.get("/:productId/variants", async (req: Request, res: Response) => {
       count: variants.length,
     });
   } catch (error: any) {
-    console.error("Error in GET /products/:productId/variants:", error);
+    const productId = parseInt(req.params.productId, 10);
+    logger.error({ error: error.message, productId, path: "/products/:productId/variants" }, "Error in GET /products/:productId/variants");
     res.status(500).json(internalError(error.message));
   }
 });
@@ -133,7 +137,8 @@ router.get("/:id", async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error: any) {
-    console.error("Error in GET /products/:id:", error);
+    const id = parseInt(req.params.id, 10);
+    logger.error({ error: error.message, id, path: "/products/:id" }, "Error in GET /products/:id");
     res.status(500).json(internalError(error.message));
   }
 });
@@ -202,7 +207,7 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error("Error in GET /products:", error);
+    logger.error({ error: error.message, path: "/products" }, "Error in GET /products");
     res.status(500).json(internalError(error.message));
   }
 });

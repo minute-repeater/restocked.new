@@ -244,3 +244,6 @@ async function testProductWithVariants() {
 testProductWithVariants().catch(console.error);
 
 
+
+
+

@@ -1,0 +1,53 @@
+From ef2f98d123db3d6b7d6c18d9e60ee7e89d91e4e5 Mon Sep 17 00:00:00 2001
+From: Bill <minuterepeater7@gmail.com>
+Date: Fri, 5 Dec 2025 12:16:00 +0000
+Subject: [PATCH] Disable OAuth: wrap all Google and Apple OAuth routes in
+ if(false) block
+
+---
+ src/api/routes/auth.ts | 15 ++++++++++++---
+ 1 file changed, 12 insertions(+), 3 deletions(-)
+
+diff --git a/src/api/routes/auth.ts b/src/api/routes/auth.ts
+index b0d0d1d..1b4d8b1 100644
+--- a/src/api/routes/auth.ts
++++ b/src/api/routes/auth.ts
+@@ -109,6 +109,8 @@ router.post("/login", postRateLimiter, async (req: Request, res: Response) => {
+   }
+ });
+ 
++// OAuth routes disabled
++if (false) {
+ /**
+  * GET /auth/google/config-status
+  * Check Google OAuth configuration status (diagnostic endpoint)
+@@ -121,9 +123,15 @@ router.get("/google/config-status", async (req: Request, res: Response) => {
+     const googleOAuthConfigured = isGoogleOAuthConfigured();
+     
+     // Get redirect URL (same logic as googleOAuth.ts)
+-    const redirectUrl = process.env.GOOGLE_REDIRECT_URL || 
+-                       process.env.GOOGLE_REDIRECT_URI || 
+-                       `${config.backendUrl}/auth/google/callback`;
++    let redirectUrl: string;
++    if (process.env.GOOGLE_REDIRECT_URL) {
++      redirectUrl = process.env.GOOGLE_REDIRECT_URL;
++    } else if (process.env.GOOGLE_REDIRECT_URI) {
++      redirectUrl = process.env.GOOGLE_REDIRECT_URI;
++    } else {
++      const backendUrl = config.backendUrl || process.env.BACKEND_URL || "https://restockednew-production.up.railway.app";
++      redirectUrl = `${backendUrl}/auth/google/callback`;
++    }
+ 
+     res.json({
+       googleOAuthConfigured,
+@@ -295,6 +303,7 @@ router.post("/apple/callback", async (req: Request, res: Response) => {
+     res.redirect(frontendErrorUrl);
+   }
+ });
++} // End of OAuth routes (disabled)
+ 
+ export { router as authRoutes };
+ 
+-- 
+2.50.1 (Apple Git-155)
+

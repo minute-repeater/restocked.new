@@ -7,7 +7,21 @@ import { config } from "../../config.js";
  */
 // Lazy initialization of OAuth2 client to avoid errors if env vars are missing
 function getOAuth2Client() {
-  const redirectUrl = process.env.GOOGLE_REDIRECT_URL || process.env.GOOGLE_REDIRECT_URI || `${config.backendUrl}/auth/google/callback`;
+  // Get redirect URL with proper fallback handling
+  let redirectUrl: string;
+  
+  if (process.env.GOOGLE_REDIRECT_URL) {
+    redirectUrl = process.env.GOOGLE_REDIRECT_URL;
+  } else if (process.env.GOOGLE_REDIRECT_URI) {
+    redirectUrl = process.env.GOOGLE_REDIRECT_URI;
+  } else {
+    // Fallback to backendUrl from config, or Railway production URL
+    const backendUrl = config.backendUrl || process.env.BACKEND_URL || "https://restockednew-production.up.railway.app";
+    redirectUrl = `${backendUrl}/auth/google/callback`;
+  }
+  
+  logger.debug({ redirectUrl }, "Google OAuth redirect URL");
+  
   return new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,

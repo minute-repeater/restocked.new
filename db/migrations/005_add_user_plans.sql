@@ -15,3 +15,6 @@ CREATE INDEX IF NOT EXISTS idx_users_plan ON users (plan);
 -- Update existing users to have 'free' plan if NULL (shouldn't happen due to DEFAULT, but safe)
 UPDATE users SET plan = 'free' WHERE plan IS NULL;
 
+
+
+

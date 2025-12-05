@@ -33,3 +33,6 @@ export abstract class StockStrategy {
 }
 
 
+
+
+

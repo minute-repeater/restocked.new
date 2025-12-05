@@ -177,3 +177,6 @@ Based on the `EHOSTUNREACH` error with IPv6 address:
 
 The diagnostic script (`supabase-test.js`) will provide the most detailed error information. Run it and share the full output.
 
+
+
+

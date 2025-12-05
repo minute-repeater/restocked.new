@@ -229,3 +229,4 @@ After setting all variables:
 - If `GOOGLE_REDIRECT_URL` not set → Uses `${BACKEND_URL}/auth/google/callback`
 - If `FRONTEND_URL` not set → OAuth callbacks may redirect incorrectly
 
+

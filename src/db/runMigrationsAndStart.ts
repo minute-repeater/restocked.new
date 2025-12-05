@@ -96,3 +96,5 @@ async function main(): Promise<void> {
 // Run migrations and start server
 main();
 
+
+

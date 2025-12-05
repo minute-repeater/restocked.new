@@ -3,7 +3,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, Sparkles, Zap, Infinity, Shield } from 'lucide-react';
+import { Check, Sparkles, Infinity, Shield } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { toast } from '@/components/ui/toaster';
 
@@ -44,7 +44,7 @@ export function Upgrade() {
       const response = await apiClient.post('/me/upgrade');
       return response.data;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       // Update auth store with new user data
       const updatedUser = { ...user!, plan: 'pro' as const };
       login({ user: updatedUser, token: useAuthStore.getState().token! });
@@ -72,7 +72,7 @@ export function Upgrade() {
       const response = await apiClient.post('/me/downgrade');
       return response.data;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       const updatedUser = { ...user!, plan: 'free' as const };
       login({ user: updatedUser, token: useAuthStore.getState().token! });
       

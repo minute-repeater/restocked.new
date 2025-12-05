@@ -291,3 +291,5 @@ git commit -m "Step 4: Document OAuth setup, env vars, and test checklist"
 
 The OAuth implementation is **additive and non-breaking**. All existing email/password functionality remains unchanged.
 
+
+

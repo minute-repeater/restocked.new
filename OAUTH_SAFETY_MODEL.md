@@ -284,3 +284,4 @@ Remove both frontend flags and backend env vars.
 
 **Status:** ✅ **OAuth is safely disabled by default and requires explicit configuration to enable**
 
+

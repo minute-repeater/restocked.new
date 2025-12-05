@@ -175,3 +175,5 @@ Database Migrations
 **Last Updated:** December 2025  
 **Status:** Migration files ready, awaiting execution in Railway environment
 
+
+

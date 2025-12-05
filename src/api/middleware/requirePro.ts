@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { getUpgradeRequiredError, ENABLE_TEST_PLANS } from "../utils/planLimits.js";
 import type { AuthenticatedRequest } from "./requireAuth.js";
+import { logger } from "../utils/logger.js";
 
 /**
  * Middleware to require Pro plan
@@ -24,7 +25,7 @@ export function requirePro(req: AuthenticatedRequest, res: Response, next: NextF
   }
 
   if (req.user.plan !== 'pro') {
-    console.log(`[Plan] Free user ${req.user.id} attempted to access Pro feature`);
+    logger.info({ userId: req.user.id }, "Free user attempted to access Pro feature");
     res.status(403).json(getUpgradeRequiredError());
     return;
   }

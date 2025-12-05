@@ -6,3 +6,6 @@ export type { NormalizedProduct } from "./helpers/productMapping.js";
 export type { NormalizedVariant } from "./helpers/variantMapping.js";
 
 
+
+
+

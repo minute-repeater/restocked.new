@@ -255,3 +255,6 @@ async function testProductWithPrice() {
 testProductWithPrice().catch(console.error);
 
 
+
+
+

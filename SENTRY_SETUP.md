@@ -326,3 +326,5 @@ Sentry free tier includes:
 **Status:** ✅ Sentry monitoring is configured and ready to use.  
 **Next Steps:** Add `SENTRY_DSN` and `VITE_SENTRY_DSN` environment variables to enable error tracking.
 
+
+

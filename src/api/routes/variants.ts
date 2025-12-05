@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { query } from "../../db/client.js";
 import { VariantRepository } from "../../db/repositories/variantRepository.js";
+import { logger } from "../utils/logger.js";
 import type { VariantResponse } from "../types.js";
 import {
   invalidRequestError,
@@ -55,7 +56,8 @@ router.get("/:id", async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error: any) {
-    console.error("Error in GET /variants/:id:", error);
+    const id = parseInt(req.params.id, 10);
+    logger.error({ error: error.message, id, path: "/variants/:id" }, "Error in GET /variants/:id");
     res.status(500).json(internalError(error.message));
   }
 });
@@ -84,7 +86,8 @@ router.get("/products/:productId", async (req: Request, res: Response) => {
       count: variants.length,
     });
   } catch (error: any) {
-    console.error("Error in GET /products/:productId/variants:", error);
+    const productId = parseInt(req.params.productId, 10);
+    logger.error({ error: error.message, productId, path: "/products/:productId/variants" }, "Error in GET /products/:productId/variants");
     res.status(500).json(internalError(error.message));
   }
 });

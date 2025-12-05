@@ -3,6 +3,7 @@ import { TrackedItemsRepository } from "../../db/repositories/trackedItemsReposi
 import { ProductRepository } from "../../db/repositories/productRepository.js";
 import { VariantRepository } from "../../db/repositories/variantRepository.js";
 import { ProductIngestionService } from "../../services/productIngestionService.js";
+import { logger } from "../utils/logger.js";
 import { validateCreateTrackedItem } from "../utils/trackedItemsValidation.js";
 import {
   invalidRequestError,
@@ -11,6 +12,7 @@ import {
   variantNotFoundError,
   forbiddenError,
   notFoundError,
+  formatError,
 } from "../utils/errors.js";
 import { postRateLimiter } from "../middleware/rateLimiting.js";
 import { fetchProductPage } from "../../fetcher/index.js";
@@ -44,14 +46,14 @@ router.post(
       // Check if variant tracking is allowed for this plan
       const userPlanObj = { plan: userPlan as 'free' | 'pro' };
       if (req.body.variant_id && !checkPlanFeature(userPlanObj, 'variant_tracking')) {
-        console.log(`[Plan] Free user ${userId} attempted variant tracking`);
+        logger.info({ userId, feature: "variant tracking" }, "Free user attempted variant tracking");
         return res.status(403).json(getUpgradeRequiredError('variant tracking'));
       }
 
       // Check tracked items limit
       const currentItems = await trackedItemsRepo.getTrackedItemsByUser(userId);
       if (hasReachedTrackedItemsLimit(userPlanObj, currentItems.length)) {
-        console.log(`[Plan] Free user ${userId} reached tracked items limit (${currentItems.length})`);
+        logger.info({ userId, currentItems: currentItems.length }, "Free user reached tracked items limit");
         return res.status(403).json({
           error: {
             code: "UPGRADE_REQUIRED",
@@ -161,7 +163,8 @@ router.post(
         tracked_item: createdItem,
       });
     } catch (error: any) {
-      console.error("Error in POST /me/tracked-items:", error);
+      const userId = req.user!.id;
+      logger.error({ error: error.message, userId, path: "/me/tracked-items" }, "Error in POST /me/tracked-items");
       
       // Handle unique constraint violation (duplicate tracking)
       if (error.code === "23505") {
@@ -170,7 +173,8 @@ router.post(
         );
       }
 
-      res.status(500).json(internalError(error.message, { stack: error.stack }));
+      const errorResponse = formatError(error);
+      res.status(500).json(errorResponse);
     }
   }
 );
@@ -190,8 +194,10 @@ router.get("/", async (req: Request, res: Response) => {
       items,
     });
   } catch (error: any) {
-    console.error("Error in GET /me/tracked-items:", error);
-    res.status(500).json(internalError(error.message, { stack: error.stack }));
+    const userId = req.user!.id;
+    logger.error({ error: error.message, userId, path: "/me/tracked-items" }, "Error in GET /me/tracked-items");
+    const errorResponse = formatError(error);
+    res.status(500).json(errorResponse);
   }
 });
 
@@ -229,8 +235,11 @@ router.delete("/:id", async (req: Request, res: Response) => {
       success: true,
     });
   } catch (error: any) {
-    console.error("Error in DELETE /me/tracked-items/:id:", error);
-    res.status(500).json(internalError(error.message, { stack: error.stack }));
+    const userId = req.user!.id;
+    const id = parseInt(req.params.id, 10);
+    logger.error({ error: error.message, userId, id, path: "/me/tracked-items/:id" }, "Error in DELETE /me/tracked-items/:id");
+    const errorResponse = formatError(error);
+    res.status(500).json(errorResponse);
   }
 });
 

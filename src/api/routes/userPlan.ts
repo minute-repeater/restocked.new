@@ -1,7 +1,8 @@
 import { Router, type Request, type Response } from "express";
 import { UserRepository } from "../../db/repositories/userRepository.js";
 import { TrackedItemsRepository } from "../../db/repositories/trackedItemsRepository.js";
-import { internalError, invalidRequestError } from "../utils/errors.js";
+import { internalError, invalidRequestError, formatError } from "../utils/errors.js";
+import { logger } from "../utils/logger.js";
 import { postRateLimiter } from "../middleware/rateLimiting.js";
 import { PLAN_LIMITS, ENABLE_TEST_PLANS } from "../utils/planLimits.js";
 
@@ -33,15 +34,17 @@ router.post("/upgrade", postRateLimiter, async (req: Request, res: Response) => 
     // Update user plan to 'pro'
     const updatedUser = await userRepo.updatePlan(userId, 'pro');
 
-    console.log(`[Plan] User ${userId} upgraded to Pro`);
+    logger.info({ userId, plan: "pro" }, "User upgraded to Pro");
 
     res.json({
       user: updatedUser,
       message: "Successfully upgraded to Pro plan",
     });
   } catch (error: any) {
-    console.error("Error in POST /me/upgrade:", error);
-    res.status(500).json(internalError(error.message, { stack: error.stack }));
+    const userId = req.user?.id;
+    logger.error({ error: error.message, userId, path: "/me/upgrade" }, "Error in POST /me/upgrade");
+    const errorResponse = formatError(error);
+    res.status(500).json(errorResponse);
   }
 });
 
@@ -84,15 +87,50 @@ router.post("/downgrade", postRateLimiter, async (req: Request, res: Response) =
     // Update user plan to 'free'
     const updatedUser = await userRepo.updatePlan(userId, 'free');
 
-    console.log(`[Plan] User ${userId} downgraded to Free`);
+    logger.info({ userId, plan: "free" }, "User downgraded to Free");
 
     res.json({
       user: updatedUser,
       message: "Successfully downgraded to Free plan",
     });
   } catch (error: any) {
-    console.error("Error in POST /me/downgrade:", error);
-    res.status(500).json(internalError(error.message, { stack: error.stack }));
+    const userId = req.user?.id;
+    logger.error({ error: error.message, userId, path: "/me/downgrade" }, "Error in POST /me/downgrade");
+    const errorResponse = formatError(error);
+    res.status(500).json(errorResponse);
+  }
+});
+
+/**
+ * GET /me
+ * Get current user information
+ * Returns: { user: {...} }
+ */
+router.get("/", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        error: { code: "UNAUTHORIZED", message: "Authentication required" },
+      });
+    }
+
+    const user = await userRepo.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({
+        error: {
+          code: "USER_NOT_FOUND",
+          message: "User not found",
+        },
+      });
+    }
+
+    res.json({
+      user,
+    });
+  } catch (error: any) {
+    logger.error({ error: error.message, userId: req.user?.id, path: "/me" }, "Error in GET /me");
+    const errorResponse = formatError(error);
+    res.status(500).json(errorResponse);
   }
 });
 
@@ -132,8 +170,9 @@ router.get("/plan", async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error("Error in GET /me/plan:", error);
-    res.status(500).json(internalError(error.message, { stack: error.stack }));
+    logger.error({ error: error.message, userId: req.user?.id, path: "/me/plan" }, "Error in GET /me/plan");
+    const errorResponse = formatError(error);
+    res.status(500).json(errorResponse);
   }
 });
 

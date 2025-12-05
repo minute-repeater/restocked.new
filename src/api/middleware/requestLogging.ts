@@ -1,8 +1,9 @@
 import type { Request, Response, NextFunction } from "express";
+import { logger } from "../utils/logger.js";
 
 /**
  * Request logging middleware
- * Logs all incoming requests with method, path, and response time
+ * Logs all incoming requests with method, path, userId (if authenticated), and response time
  */
 export function requestLoggingMiddleware(
   req: Request,
@@ -10,19 +11,31 @@ export function requestLoggingMiddleware(
   next: NextFunction
 ): void {
   const startTime = Date.now();
+  const userId = (req as any).user?.id;
 
   // Log request
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  logger.info({
+    method: req.method,
+    path: req.path,
+    userId: userId || undefined,
+    ip: req.ip,
+  }, "Incoming request");
 
   // Log response when finished
   res.on("finish", () => {
     const duration = Date.now() - startTime;
-    const statusColor = res.statusCode >= 400 ? "❌" : "✅";
-    console.log(
-      `${statusColor} [${new Date().toISOString()}] ${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`
-    );
+    const logLevel = res.statusCode >= 500 ? "error" : res.statusCode >= 400 ? "warn" : "info";
+    
+    logger[logLevel]({
+      method: req.method,
+      path: req.path,
+      statusCode: res.statusCode,
+      duration: `${duration}ms`,
+      userId: userId || undefined,
+    }, "Request completed");
   });
 
   next();
 }
+
 

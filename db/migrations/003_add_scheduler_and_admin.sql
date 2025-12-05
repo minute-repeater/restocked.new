@@ -29,3 +29,6 @@ CREATE INDEX IF NOT EXISTS idx_scheduler_logs_run_started_at ON scheduler_logs (
 CREATE INDEX IF NOT EXISTS idx_scheduler_logs_success ON scheduler_logs (success);
 CREATE INDEX IF NOT EXISTS idx_scheduler_logs_run_started_success ON scheduler_logs (run_started_at DESC, success);
 
+
+
+

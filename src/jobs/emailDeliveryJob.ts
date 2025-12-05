@@ -84,3 +84,6 @@ export class EmailDeliveryJob {
 // Export singleton instance
 export const emailDeliveryJob = new EmailDeliveryJob();
 
+
+
+

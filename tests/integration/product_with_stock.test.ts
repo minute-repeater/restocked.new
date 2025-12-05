@@ -270,3 +270,6 @@ async function testProductWithStock() {
 testProductWithStock().catch(console.error);
 
 
+
+
+
