@@ -1,174 +1,143 @@
-# Deployment Status Check - $(date)
+# Deployment Status - CORS Fix & OAuth
 
-## ✅ What's Working
-
-1. **DNS Resolution**: `restocked.now` resolves correctly to Vercel IP (`76.76.21.21`)
-2. **SSL Certificate**: Valid Let's Encrypt certificate is active
-3. **Domain Configuration**: Domain is properly configured with Vercel
-
-## ❌ Issues Found
-
-### 1. Landing Site (Vercel)
-- **Status**: `DEPLOYMENT_NOT_FOUND`
-- **Issue**: Domain points to Vercel but no deployment is found
-- **URL Tested**: `https://restocked.now`
-- **Error**: `x-vercel-error: DEPLOYMENT_NOT_FOUND`
-
-**Action Required:**
-- Check Vercel dashboard for landing site project
-- Verify domain is assigned to the correct project
-- Ensure deployment is completed and active
-- Check if root directory is set to `landing`
-
-### 2. Backend API (Railway)
-- **Status**: Not accessible
-- **URL Tested**: `https://api.restocked.now/health`
-- **Error**: Connection timeout (000 status)
-
-**Possible Issues:**
-- Domain `api.restocked.now` not configured in Railway
-- Railway service not running
-- DNS not pointing to Railway
-- Backend not deployed yet
-
-**Action Required:**
-- Check Railway dashboard for service status
-- Verify `api.restocked.now` DNS points to Railway
-- Check Railway logs for errors
-- Verify backend is deployed and running
-
-### 3. Frontend App (Vercel)
-- **Status**: Not accessible
-- **URL Tested**: `https://app.restocked.now`
-- **Error**: Connection timeout
-
-**Possible Issues:**
-- Domain `app.restocked.now` not configured in Vercel
-- Frontend deployment not completed
-- DNS not pointing to Vercel
-- Root directory not set to `frontend`
-
-**Action Required:**
-- Check Vercel dashboard for frontend project
-- Verify `app.restocked.now` is assigned to frontend project
-- Ensure deployment is completed
-- Check if root directory is set to `frontend`
-
-## 🔍 Next Steps to Diagnose
-
-### Check Railway Backend
-
-1. **Get Railway URL:**
-   - Go to Railway dashboard
-   - Find your backend service
-   - Copy the Railway-provided URL (e.g., `https://your-app.up.railway.app`)
-   - Test: `curl https://your-app.up.railway.app/health`
-
-2. **Check Railway Logs:**
-   - Look for startup messages
-   - Check for database connection errors
-   - Verify environment variables are set
-
-3. **Verify Domain Setup:**
-   - In Railway → Settings → Domains
-   - Check if `api.restocked.now` is added
-   - Verify DNS records are configured
-
-### Check Vercel Deployments
-
-1. **Landing Site:**
-   - Go to Vercel dashboard
-   - Find landing site project
-   - Check deployment status
-   - Verify domain `restocked.now` is assigned
-   - Check root directory is `landing`
-
-2. **Frontend App:**
-   - Go to Vercel dashboard
-   - Find frontend project
-   - Check deployment status
-   - Verify domain `app.restocked.now` is assigned
-   - Check root directory is `frontend`
-   - Verify `VITE_API_BASE_URL` environment variable is set
-
-## 📋 Quick Verification Checklist
-
-### Railway Backend
-- [ ] Service is "Active" in Railway dashboard
-- [ ] Latest deployment shows "Success"
-- [ ] Logs show "Server running on port XXXX"
-- [ ] Logs show "Database connected"
-- [ ] Logs show schedulers started
-- [ ] Health endpoint works on Railway URL: `https://your-app.up.railway.app/health`
-- [ ] Domain `api.restocked.now` is configured in Railway
-- [ ] DNS records for `api.restocked.now` point to Railway
-
-### Vercel Landing
-- [ ] Project exists in Vercel dashboard
-- [ ] Latest deployment shows "Ready"
-- [ ] Root directory is set to `landing`
-- [ ] Domain `restocked.now` is assigned
-- [ ] DNS records for `restocked.now` point to Vercel
-- [ ] Build completed without errors
-
-### Vercel Frontend
-- [ ] Project exists in Vercel dashboard
-- [ ] Latest deployment shows "Ready"
-- [ ] Root directory is set to `frontend`
-- [ ] Domain `app.restocked.now` is assigned
-- [ ] Environment variable `VITE_API_BASE_URL` is set
-- [ ] DNS records for `app.restocked.now` point to Vercel
-- [ ] Build completed without errors
-
-## 🛠️ Common Fixes
-
-### If Landing Shows DEPLOYMENT_NOT_FOUND:
-1. Check Vercel project settings → Domains
-2. Remove and re-add `restocked.now` domain
-3. Wait for DNS propagation (can take a few minutes)
-4. Redeploy the project
-
-### If Backend Not Accessible:
-1. Check Railway service is running
-2. Test Railway default URL first: `https://your-app.up.railway.app/health`
-3. If Railway URL works, check domain configuration
-4. Verify DNS for `api.restocked.now` points to Railway
-5. Check Railway logs for startup errors
-
-### If Frontend Not Accessible:
-1. Check Vercel deployment status
-2. Verify root directory is `frontend` (not root)
-3. Check build logs for errors
-4. Verify `VITE_API_BASE_URL` is set correctly
-5. Test Vercel default URL: `https://your-app.vercel.app`
-
-## 📞 What to Check Right Now
-
-1. **Railway Dashboard:**
-   - Is the backend service running?
-   - What's the Railway-provided URL?
-   - Are there any errors in logs?
-
-2. **Vercel Dashboard:**
-   - How many projects do you have? (should be 2: landing + frontend)
-   - What's the status of each deployment?
-   - Are domains configured correctly?
-
-3. **DNS Settings:**
-   - Where is your DNS managed? (Namecheap, Cloudflare, etc.)
-   - Are CNAME records set up for:
-     - `restocked.now` → Vercel
-     - `app.restocked.now` → Vercel
-     - `api.restocked.now` → Railway
-
-## 🎯 Expected URLs After Fix
-
-- **Landing**: `https://restocked.now` → Should show landing page
-- **Frontend**: `https://app.restocked.now` → Should show login page
-- **Backend**: `https://api.restocked.now/health` → Should return JSON health status
+**Date:** 2025-12-04  
+**Status:** ✅ Code Deployed, Waiting for Railway Build
 
 ---
 
-**Last Checked**: $(date)
-**Status**: Issues detected - deployments need verification
+## ✅ Completed Automatically
 
+### 1. Code Changes
+- ✅ CORS configuration updated in `src/api/server.ts`
+- ✅ Added fallback Railway URL if `BACKEND_URL` missing
+- ✅ Added support for `.up.railway.app` domains
+- ✅ Improved logging for CORS debugging
+- ✅ Changes committed and pushed to GitHub
+
+### 2. Environment Variables (Verified)
+All required variables are **already set** in Railway:
+
+- ✅ `BACKEND_URL` = `https://restockednew-production.up.railway.app`
+- ✅ `FRONTEND_URL` = `https://app.restocked.now`
+- ✅ `GOOGLE_CLIENT_ID` = (configured)
+- ✅ `GOOGLE_CLIENT_SECRET` = (configured)
+- ✅ `GOOGLE_REDIRECT_URL` = `https://restockednew-production.up.railway.app/auth/google/callback`
+
+**No manual action needed** - all variables are correct!
+
+---
+
+## ⏳ In Progress
+
+### Railway Deployment
+- **Status:** Railway is auto-deploying from GitHub push
+- **Expected Time:** 2-5 minutes
+- **Monitor:** Railway Dashboard → Deployments tab
+
+---
+
+## 🧪 Next Steps (After Deployment Completes)
+
+### 1. Test OAuth Endpoint
+
+Run the test script:
+```bash
+./test-oauth-endpoint.sh
+```
+
+Or test manually:
+```bash
+# Test without Origin header (should work now)
+curl https://restockednew-production.up.railway.app/auth/google/url
+
+# Test with Origin header
+curl -H "Origin: https://app.restocked.now" \
+  https://restockednew-production.up.railway.app/auth/google/url
+```
+
+**Expected Results:**
+- ✅ **200 OK** with OAuth URL (if Google OAuth is configured)
+- ✅ **400 Bad Request** with "Google OAuth is not configured" (if credentials missing)
+- ❌ **CORS Error** should NOT appear anymore
+
+### 2. Check Railway Logs
+
+After deployment completes, check logs for:
+- ✅ `"CORS configuration initialized"` - confirms new code is running
+- ✅ No `"BACKEND_URL not set"` warning (since it's set)
+- ✅ No CORS rejection errors
+
+**View logs:**
+```bash
+railway logs --tail 50
+```
+
+Or in Railway Dashboard:
+- Go to Railway Dashboard → Your Project → Backend Service → Deployments → Latest → View Logs
+
+### 3. Test Frontend OAuth Flow
+
+1. Go to `https://app.restocked.now/login`
+2. Click "Sign in with Google" button (if visible)
+3. Should redirect to Google OAuth
+4. After Google auth, should redirect back to dashboard
+
+---
+
+## 📋 Manual Actions Required
+
+### ✅ None - Everything is Automated!
+
+All environment variables are set, code is deployed. Just wait for Railway to finish building and test.
+
+---
+
+## 🔍 Troubleshooting
+
+### If CORS errors persist after deployment:
+
+1. **Verify deployment completed:**
+   - Railway Dashboard → Deployments → Check latest deployment status
+   - Should show "Active" or "Success"
+
+2. **Check logs for new code:**
+   ```bash
+   railway logs | grep "CORS configuration"
+   ```
+   - Should see: `"CORS configuration initialized"`
+   - If not, deployment may not have completed yet
+
+3. **Verify BACKEND_URL:**
+   ```bash
+   railway variables BACKEND_URL
+   ```
+   - Should be: `https://restockednew-production.up.railway.app`
+
+4. **Test endpoint directly:**
+   ```bash
+   curl -v https://restockednew-production.up.railway.app/auth/google/url
+   ```
+   - Check response headers for CORS headers
+   - Should NOT see CORS error in response body
+
+### If OAuth returns 400 "not configured":
+
+- Check `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set correctly
+- Verify values match Google Cloud Console exactly
+- No extra spaces or quotes in Railway variables
+
+---
+
+## 📝 Summary
+
+**What was done automatically:**
+- ✅ Code updated and pushed to GitHub
+- ✅ Railway will auto-deploy (in progress)
+- ✅ Environment variables verified (all set correctly)
+
+**What you need to do:**
+- ⏳ Wait 2-5 minutes for Railway deployment to complete
+- 🧪 Test the OAuth endpoint using `./test-oauth-endpoint.sh`
+- ✅ Verify CORS errors are gone
+
+**No manual Railway/Vercel dashboard actions needed** - everything is configured! 🎉
