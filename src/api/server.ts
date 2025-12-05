@@ -17,6 +17,8 @@ import { requestLoggingMiddleware } from "./middleware/requestLogging.js";
 import { postRateLimiter } from "./middleware/rateLimiting.js";
 import { requireAuth } from "./middleware/requireAuth.js";
 import { config } from "../config.js";
+import { formatError, payloadTooLargeError, ErrorCodes } from "./utils/errors.js";
+import { logger } from "./utils/logger.js";
 
 // Initialize Sentry at the top, before creating the server
 if (process.env.SENTRY_DSN) {
@@ -33,16 +35,16 @@ if (process.env.SENTRY_DSN) {
     release: process.env.APP_VERSION || undefined,
     // Only send stack traces in production (not in dev)
     beforeSend(event, hint) {
-      // In development, don't send to Sentry (just log to console)
+      // In development, don't send to Sentry (just log)
       if (config.isDevelopment) {
-        console.error("Sentry event (not sent in dev):", event);
+        logger.debug({ event }, "Sentry event (not sent in dev)");
         return null; // Don't send in dev
       }
       return event;
     },
   });
 } else if (config.isProduction) {
-  console.warn("Sentry DSN not configured. Error monitoring disabled.");
+  logger.warn("Sentry DSN not configured. Error monitoring disabled.");
 }
 
 /**
@@ -55,40 +57,84 @@ export function createServer(): Express {
   // No need for separate middleware - expressIntegration() handles it
 
   // CORS middleware - allow requests from specific origins
-  const allowedOrigins = config.isProduction
-    ? [
-        "https://app.restocked.now",
-        "https://restocked.now",
-        "https://restocked-frontend.vercel.app",
-        "https://restocked-dashboard.vercel.app",
-        "https://restockednew-production.up.railway.app",
-      ]
-    : [
-        config.frontendUrl,
-        "http://localhost:5173",
-        "http://localhost:3000",
-      ];
+  const allowedOrigins: string[] = [];
+  
+  // Add backend URL itself (for same-origin requests and OAuth callbacks)
+  if (config.backendUrl) {
+    allowedOrigins.push(config.backendUrl);
+  }
+  
+  // Fallback: Add Railway production URL if BACKEND_URL env var is not set
+  // This ensures OAuth callbacks work even if BACKEND_URL is missing
+  if (config.isProduction && !config.backendUrl) {
+    const railwayUrl = "https://restockednew-production.up.railway.app";
+    allowedOrigins.push(railwayUrl);
+    logger.warn({ railwayUrl }, "BACKEND_URL not set, using hardcoded Railway URL for CORS");
+  }
+  
+  // Add FRONTEND_URL from environment if set
+  if (process.env.FRONTEND_URL) {
+    allowedOrigins.push(process.env.FRONTEND_URL);
+  }
+  
+  // Add production origins
+  allowedOrigins.push(
+    "https://app.restocked.now",
+    "https://restocked.now"
+  );
+  
+  // Add development origins
+  if (!config.isProduction) {
+    allowedOrigins.push(
+      "http://localhost:3000",
+      "http://localhost:5173"
+    );
+    if (config.frontendUrl) {
+      allowedOrigins.push(config.frontendUrl);
+    }
+  }
+
+  // Log allowed origins for debugging (without sensitive data)
+  logger.info({ 
+    allowedOriginsCount: allowedOrigins.length,
+    hasBackendUrl: !!config.backendUrl,
+    isProduction: config.isProduction
+  }, "CORS configuration initialized");
 
   app.use(
     cors({
       origin: (origin, callback) => {
-        // Allow requests with no origin (mobile apps, Postman, etc.) in development only
+        // Allow requests with NO origin (for curl, mobile, OAuth redirects, direct browser navigation)
         if (!origin) {
-          if (config.isDevelopment) {
-            return callback(null, true);
-          }
-          return callback(new Error("Not allowed by CORS"));
+          return callback(null, true);
         }
+        
+        // If origin EXACTLY matches any allowedOrigins entry, allow it
         if (allowedOrigins.includes(origin)) {
           return callback(null, true);
         }
-        // In development, allow localhost
-        if (config.isDevelopment && origin.includes("localhost")) {
+        
+        // If origin ends with ".vercel.app", allow it (for Vercel preview deployments)
+        if (origin.endsWith('.vercel.app')) {
           return callback(null, true);
         }
+        
+        // If origin ends with ".up.railway.app", allow it (for Railway deployments)
+        if (origin.endsWith('.up.railway.app')) {
+          return callback(null, true);
+        }
+        
+        // Log rejected origin for debugging (in production, log without exposing sensitive data)
+        if (config.isProduction) {
+          logger.warn({ origin: origin.substring(0, 50) + "..." }, "CORS request rejected");
+        } else {
+          logger.warn({ origin, allowedOrigins }, "CORS request rejected");
+        }
+        
+        // Otherwise reject
         callback(new Error("Not allowed by CORS"));
       },
-      credentials: false,
+      credentials: true,
       methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
       allowedHeaders: ["Content-Type", "Authorization"],
       preflightContinue: false,
@@ -97,7 +143,8 @@ export function createServer(): Express {
   );
 
   // Middleware
-  app.use(express.json());
+  // Request size limit: 1MB to prevent DoS attacks
+  app.use(express.json({ limit: "1mb" }));
   app.use(requestLoggingMiddleware);
 
   // Routes (rate limiting applied within route handlers)
@@ -162,16 +209,14 @@ export function createServer(): Express {
         version: appVersion,
         environment: config.appEnv,
         database: "disconnected",
-        error: error.message,
+        // Only include error message in development
+        ...(config.isDevelopment ? { error: error.message } : {}),
         timestamp: new Date().toISOString(),
       });
     }
   });
 
-  // Sentry error handler must be before other error handlers
-  app.use(expressErrorHandler());
-
-  // Error handling middleware
+  // Handle payload too large errors (from express.json limit)
   app.use(
     (
       err: Error,
@@ -179,19 +224,61 @@ export function createServer(): Express {
       res: express.Response,
       next: express.NextFunction
     ) => {
-      console.error("API Error:", err);
-      
-      // In production, don't expose stack traces or error details
-      const isProduction = config.isProduction;
-      
-      res.status(500).json({
-        error: {
-          code: "INTERNAL_ERROR",
-          message: "Internal server error",
-          // Only include error message in development
-          ...(isProduction ? {} : { details: { message: err.message } }),
-        },
-      });
+      // Check for payload too large error
+      if (err instanceof Error && (err as any).type === "entity.too.large") {
+        return res.status(413).json(payloadTooLargeError("1MB"));
+      }
+      // Pass to next error handler
+      next(err);
+    }
+  );
+
+  // Sentry error handler must be before other error handlers
+  // This captures errors and sends them to Sentry
+  app.use(expressErrorHandler());
+
+  // Final error handling middleware
+  // This ensures all errors return valid JSON responses
+  app.use(
+    (
+      err: Error,
+      req: express.Request,
+      res: express.Response,
+      next: express.NextFunction
+    ) => {
+      // Log error for debugging (full details in logs, not in response)
+      logger.error({
+        error: err.message,
+        stack: config.isDevelopment ? err.stack : undefined,
+        path: req.path,
+        method: req.method,
+        userId: (req as any).user?.id,
+      }, "API error");
+
+      // Format error for response (production-safe)
+      const errorResponse = formatError(err);
+
+      // Ensure response is JSON and has proper status code
+      if (!res.headersSent) {
+        // Determine appropriate status code based on error type
+        let statusCode = 500;
+        if (errorResponse.error.code === ErrorCodes.UNAUTHORIZED) {
+          statusCode = 401;
+        } else if (errorResponse.error.code === ErrorCodes.FORBIDDEN) {
+          statusCode = 403;
+        } else if (errorResponse.error.code === ErrorCodes.NOT_FOUND) {
+          statusCode = 404;
+        } else if (errorResponse.error.code === ErrorCodes.INVALID_REQUEST || 
+                   errorResponse.error.code === ErrorCodes.INVALID_URL) {
+          statusCode = 400;
+        } else if (errorResponse.error.code === ErrorCodes.RATE_LIMIT_EXCEEDED) {
+          statusCode = 429;
+        } else if (errorResponse.error.code === ErrorCodes.PAYLOAD_TOO_LARGE) {
+          statusCode = 413;
+        }
+
+        res.status(statusCode).json(errorResponse);
+      }
     }
   );
 
@@ -211,7 +298,7 @@ if (isMainModule) {
     const { validateConfig } = await import("../config.js");
     validateConfig();
   } catch (error: any) {
-    console.error("Configuration validation failed:", error.message);
+    logger.error({ error: error.message }, "Configuration validation failed");
     process.exit(1);
   }
 
@@ -223,9 +310,9 @@ if (isMainModule) {
   try {
     const { query } = await import("../db/client.js");
     await query("SELECT 1");
-    console.log(`[Server] Database connected (${config.appEnv})`);
+    logger.info({ environment: config.appEnv }, "Database connected");
   } catch (error: any) {
-    console.error("Database connection failed:", error.message);
+    logger.error({ error: error.message }, "Database connection failed");
     process.exit(1);
   }
   
@@ -237,12 +324,12 @@ if (isMainModule) {
       
       if (schedulerConfig.ENABLE_SCHEDULER) {
         schedulerService.start();
-        console.log(`[Server] Scheduler started with interval ${schedulerConfig.CHECK_INTERVAL_MINUTES} minutes`);
+        logger.info({ intervalMinutes: schedulerConfig.CHECK_INTERVAL_MINUTES }, "Scheduler started");
       } else {
-        console.log("[Server] Scheduler is disabled");
+        logger.info("Scheduler is disabled");
       }
     } catch (error: any) {
-      console.error("Failed to start scheduler:", error.message);
+      logger.error({ error: error.message }, "Failed to start scheduler");
       // Don't exit - server can still run without scheduler
     }
   })();
@@ -253,10 +340,10 @@ if (isMainModule) {
       const { emailDeliveryScheduler } = await import("../jobs/emailDeliveryScheduler.js");
       emailDeliveryScheduler.start();
       if (config.enableEmailScheduler) {
-        console.log(`[Server] Email delivery scheduler started (interval: ${config.emailDeliveryIntervalMinutes} minutes)`);
+        logger.info({ intervalMinutes: config.emailDeliveryIntervalMinutes }, "Email delivery scheduler started");
       }
     } catch (error: any) {
-      console.error("Failed to start email delivery scheduler:", error.message);
+      logger.error({ error: error.message }, "Failed to start email delivery scheduler");
       // Don't exit - server can still run without email scheduler
     }
   })();
@@ -267,17 +354,17 @@ if (isMainModule) {
       const { checkScheduler } = await import("../jobs/checkScheduler.js");
       checkScheduler.start();
       if (config.enableCheckScheduler) {
-        console.log(`[Server] Check scheduler started (interval: ${config.checkSchedulerIntervalMinutes} minutes)`);
+        logger.info({ intervalMinutes: config.checkSchedulerIntervalMinutes }, "Check scheduler started");
       }
     } catch (error: any) {
-      console.error("Failed to start check scheduler:", error.message);
+      logger.error({ error: error.message }, "Failed to start check scheduler");
       // Don't exit - server can still run without check scheduler
     }
   })();
   
   // Start server ONLY after database connection is verified
   app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
+    logger.info({ port }, "Server running");
   });
 }
 
