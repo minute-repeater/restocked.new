@@ -34,7 +34,7 @@ if (process.env.SENTRY_DSN) {
     // Release tracking (optional, can be set via environment variable)
     release: process.env.APP_VERSION || undefined,
     // Only send stack traces in production (not in dev)
-    beforeSend(event, hint) {
+    beforeSend(event: any, hint: any) {
       // In development, don't send to Sentry (just log)
       if (config.isDevelopment) {
         logger.debug({ event }, "Sentry event (not sent in dev)");
