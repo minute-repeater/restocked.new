@@ -110,6 +110,35 @@ router.post("/login", postRateLimiter, async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /auth/google/config-status
+ * Check Google OAuth configuration status (diagnostic endpoint)
+ * Returns: { googleOAuthConfigured, clientIdPresent, clientSecretPresent, redirectUrl }
+ */
+router.get("/google/config-status", async (req: Request, res: Response) => {
+  try {
+    const clientIdPresent = !!process.env.GOOGLE_CLIENT_ID;
+    const clientSecretPresent = !!process.env.GOOGLE_CLIENT_SECRET;
+    const googleOAuthConfigured = isGoogleOAuthConfigured();
+    
+    // Get redirect URL (same logic as googleOAuth.ts)
+    const redirectUrl = process.env.GOOGLE_REDIRECT_URL || 
+                       process.env.GOOGLE_REDIRECT_URI || 
+                       `${config.backendUrl}/auth/google/callback`;
+
+    res.json({
+      googleOAuthConfigured,
+      clientIdPresent,
+      clientSecretPresent,
+      redirectUrl,
+    });
+  } catch (error: any) {
+    logger.error({ error: error.message, path: "/auth/google/config-status" }, "Error in GET /auth/google/config-status");
+    const errorResponse = formatError(error);
+    res.status(500).json(errorResponse);
+  }
+});
+
+/**
  * GET /auth/google/url
  * Get Google OAuth authorization URL
  * Returns: { url: string }
