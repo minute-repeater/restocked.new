@@ -16,10 +16,10 @@ export function Login() {
   const { login, token } = useAuthStore();
   const navigate = useNavigate();
 
-  // Feature flags for OAuth providers
-  const googleOAuthEnabled = import.meta.env.VITE_GOOGLE_OAUTH_ENABLED === 'true';
-  const appleOAuthEnabled = import.meta.env.VITE_APPLE_OAUTH_ENABLED === 'true';
-  const showOAuthButtons = googleOAuthEnabled || appleOAuthEnabled;
+  // OAuth disabled - feature flags commented out
+  // const googleOAuthEnabled = import.meta.env.VITE_GOOGLE_OAUTH_ENABLED === 'true';
+  // const appleOAuthEnabled = import.meta.env.VITE_APPLE_OAUTH_ENABLED === 'true';
+  // const showOAuthButtons = googleOAuthEnabled || appleOAuthEnabled;
 
   // Redirect to dashboard if already logged in
   useEffect(() => {
@@ -54,33 +54,34 @@ export function Login() {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    try {
-      setError('');
-      setLoading(true);
-      const { url } = await authApi.getGoogleAuthUrl();
-      // Redirect to Google OAuth (this will navigate away from the page)
-      window.location.href = url;
-      // Note: setLoading(false) won't execute because page navigates away
-    } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Failed to initiate Google login. Please try again.');
-      setLoading(false);
-    }
-  };
+  // OAuth handlers disabled
+  // const handleGoogleLogin = async () => {
+  //   try {
+  //     setError('');
+  //     setLoading(true);
+  //     const { url } = await authApi.getGoogleAuthUrl();
+  //     // Redirect to Google OAuth (this will navigate away from the page)
+  //     window.location.href = url;
+  //     // Note: setLoading(false) won't execute because page navigates away
+  //   } catch (err: any) {
+  //     setError(err.response?.data?.error?.message || 'Failed to initiate Google login. Please try again.');
+  //     setLoading(false);
+  //   }
+  // };
 
-  const handleAppleLogin = async () => {
-    try {
-      setError('');
-      setLoading(true);
-      const { url } = await authApi.getAppleAuthUrl();
-      // Redirect to Apple OAuth (this will navigate away from the page)
-      window.location.href = url;
-      // Note: setLoading(false) won't execute because page navigates away
-    } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Failed to initiate Apple login. Please try again.');
-      setLoading(false);
-    }
-  };
+  // const handleAppleLogin = async () => {
+  //   try {
+  //     setError('');
+  //     setLoading(true);
+  //     const { url } = await authApi.getAppleAuthUrl();
+  //     // Redirect to Apple OAuth (this will navigate away from the page)
+  //     window.location.href = url;
+  //     // Note: setLoading(false) won't execute because page navigates away
+  //   } catch (err: any) {
+  //     setError(err.response?.data?.error?.message || 'Failed to initiate Apple login. Please try again.');
+  //     setLoading(false);
+  //   }
+  // };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -124,7 +125,8 @@ export function Login() {
               {loading ? 'Signing in...' : 'Sign in'}
             </Button>
 
-            {showOAuthButtons && (
+            {/* OAuth buttons disabled */}
+            {/* {showOAuthButtons && (
               <>
                 <div className="relative my-6">
                   <div className="absolute inset-0 flex items-center">
@@ -182,7 +184,7 @@ export function Login() {
                   )}
                 </div>
               </>
-            )}
+            )} */}
 
             <div className="text-center text-sm">
               <span className="text-gray-600">Don't have an account? </span>
