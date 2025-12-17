@@ -81,12 +81,34 @@ Landing site runs on `http://localhost:5173` by default (or use different port).
 
 ### Backend (Railway)
 
-See `DEPLOYMENT.md` for detailed Railway setup instructions.
+This repo uses **config-as-code** for Railway deployments.
 
-**Key Settings:**
-- Build: `npm install && npm run build`
-- Start: `npm start`
-- Root: `/` (project root)
+#### Railway Setup (Required)
+1. In Railway project settings → **Config-as-code** section
+2. Set **Config file path** to: `railway.json`
+3. This ensures Railway uses the build/deploy settings from the repo
+
+#### Services
+
+| Service | Start Command | Purpose |
+|---------|---------------|---------|
+| **API** | `npm start` | HTTP server (port 3000) |
+| **Worker** | `npm run start:worker` | Background jobs, stock checks (port 3001 health only) |
+
+#### Build Configuration
+- **Node version**: 20 (enforced via `.nvmrc` + `nixpacks.toml`)
+- **Build command**: `rm -rf dist && npm run build` (set in `nixpacks.toml`)
+- **Install**: Handled automatically by Nixpacks (runs `npm ci`)
+
+#### Important Files
+- `railway.json` - Railway deployment config
+- `nixpacks.toml` - Build phase control (prevents EBUSY cache errors)
+- `.nvmrc` - Node version pin
+
+#### Creating Two Services
+1. Create first service (API) - Railway auto-detects `npm start`
+2. Create second service (Worker) - Override start command to `npm run start:worker`
+3. Both services share the same `DATABASE_URL` and env vars
 
 ### Frontend (Vercel)
 

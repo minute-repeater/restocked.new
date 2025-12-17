@@ -1,0 +1,18 @@
+# Nixpacks configuration for Railway builds
+# This file explicitly controls build phases to prevent EBUSY errors
+# on node_modules/.cache (which is a mounted cache directory)
+
+[phases.setup]
+nixPkgs = ["nodejs_20", "npm"]
+
+[phases.install]
+# Let Nixpacks handle npm ci automatically - DO NOT override
+# This runs in a clean layer before the cache mount
+
+[phases.build]
+# Only compile TypeScript - do NOT run npm ci here
+# npm ci would try to delete node_modules/.cache which is mounted
+cmds = ["rm -rf dist", "npm run build"]
+
+[start]
+cmd = "npm start"
