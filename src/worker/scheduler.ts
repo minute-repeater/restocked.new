@@ -29,6 +29,17 @@
  */
 
 import "dotenv/config";
+
+// ============================================================================
+// Service Role Guard
+// ============================================================================
+// Prevents accidental startup of worker when SERVICE_ROLE is set to something else
+if (process.env.SERVICE_ROLE && process.env.SERVICE_ROLE !== "worker") {
+  console.error(`[FATAL] SERVICE_ROLE is "${process.env.SERVICE_ROLE}" but this is the Worker entrypoint.`);
+  console.error(`[FATAL] Expected SERVICE_ROLE="worker" or unset. Exiting.`);
+  process.exit(1);
+}
+
 import * as http from "http";
 import * as Sentry from "@sentry/node";
 import { config, validateConfig, getAppVersionAsync } from "../config.js";

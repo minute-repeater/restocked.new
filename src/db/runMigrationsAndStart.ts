@@ -10,6 +10,16 @@ import { spawn } from "child_process";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 
+// ============================================================================
+// Service Role Guard
+// ============================================================================
+// Prevents accidental startup of API when SERVICE_ROLE is set to something else
+if (process.env.SERVICE_ROLE && process.env.SERVICE_ROLE !== "api") {
+  console.error(`[FATAL] SERVICE_ROLE is "${process.env.SERVICE_ROLE}" but this is the API entrypoint.`);
+  console.error(`[FATAL] Expected SERVICE_ROLE="api" or unset. Exiting.`);
+  process.exit(1);
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
