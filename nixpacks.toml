@@ -3,7 +3,8 @@
 # on node_modules/.cache (which is a mounted cache directory)
 
 [phases.setup]
-nixPkgs = ["nodejs_20", "npm"]
+# npm is bundled with nodejs_20 - do NOT list it separately
+nixPkgs = ["nodejs_20"]
 
 [phases.install]
 # Let Nixpacks handle npm ci automatically - DO NOT override
