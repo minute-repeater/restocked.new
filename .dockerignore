@@ -1,0 +1,59 @@
+# Dependencies (will be installed fresh via npm ci)
+node_modules/
+**/node_modules/
+
+# Frontend and Landing (not needed for backend)
+frontend/
+landing/
+
+# Build outputs (will be regenerated)
+dist/
+**/dist/
+
+# Documentation
+*.md
+docs/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# Environment files
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Logs
+*.log
+logs/
+
+# Testing
+coverage/
+.nyc_output/
+tests/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary
+tmp/
+temp/
+*.tmp
+
+# Assets/images not needed for backend
+assets/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+
+# Scripts not needed at runtime
+scripts/
+*.sh
