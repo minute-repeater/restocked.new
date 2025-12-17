@@ -46,7 +46,17 @@ export interface StockExtractionResult {
   stock: StockShell | null;
   /** Optional notes about the extraction process */
   notes?: string[];
+  /** 
+   * Name of the strategy that successfully extracted stock info (added in fix #6)
+   * This is a structured field to avoid parsing from free-form notes
+   * Example values: 'notify-me-ui', 'json', 'dom', 'button', 'heuristic'
+   */
+  strategyName?: string;
 }
+
+
+
+
 
 
 

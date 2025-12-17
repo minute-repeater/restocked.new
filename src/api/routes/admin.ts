@@ -391,5 +391,102 @@ router.get("/checks/slow", async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * POST /admin/track/variants
+ * Manually trigger variant tracking
+ * Body (optional): { variantIds?: number[] }
+ * If variantIds provided, only track those variants
+ * If not provided, track all variants that need checking
+ */
+router.post("/track/variants", async (req: Request, res: Response) => {
+  try {
+    const { trackingScheduler } = await import("../../jobs/trackingScheduler.js");
+    
+    // Check if already running
+    if (trackingScheduler.getStatus().isRunning) {
+      return res.status(409).json(
+        invalidRequestError("Tracking run is already in progress")
+      );
+    }
+
+    const { variantIds } = req.body as { variantIds?: number[] };
+
+    // Validate variantIds if provided
+    if (variantIds !== undefined) {
+      if (!Array.isArray(variantIds)) {
+        return res.status(400).json(
+          invalidRequestError("variantIds must be an array of numbers")
+        );
+      }
+
+      if (variantIds.length === 0) {
+        return res.status(400).json(
+          invalidRequestError("variantIds array cannot be empty")
+        );
+      }
+
+      // Validate all are numbers
+      const invalidIds = variantIds.filter((id) => typeof id !== "number" || isNaN(id));
+      if (invalidIds.length > 0) {
+        return res.status(400).json(
+          invalidRequestError("All variantIds must be valid numbers", { invalidIds })
+        );
+      }
+    }
+
+    logger.info(
+      { variantIds: variantIds?.length || "all" },
+      "Manual tracking trigger requested"
+    );
+
+    // Run tracking synchronously and wait for results
+    const result = await trackingScheduler.runTracking(variantIds);
+
+    res.json({
+      success: true,
+      checked: result.checked,
+      notificationsCreated: result.notificationsCreated,
+      errors: result.errors,
+      durationMs: result.durationMs,
+    });
+  } catch (error: any) {
+    logger.error(
+      { error: error.message, path: "/admin/track/variants" },
+      "Error in POST /admin/track/variants"
+    );
+
+    if (error.message.includes("already in progress")) {
+      return res.status(409).json(
+        invalidRequestError("Tracking run is already in progress")
+      );
+    }
+
+    const errorResponse = formatError(error);
+    res.status(500).json(errorResponse);
+  }
+});
+
+/**
+ * GET /admin/track/status
+ * Get tracking scheduler status
+ */
+router.get("/track/status", async (req: Request, res: Response) => {
+  try {
+    const { trackingScheduler } = await import("../../jobs/trackingScheduler.js");
+    const status = trackingScheduler.getStatus();
+
+    res.json({
+      ...status,
+    });
+  } catch (error: any) {
+    logger.error(
+      { error: error.message, path: "/admin/track/status" },
+      "Error in GET /admin/track/status"
+    );
+    const errorResponse = formatError(error);
+    res.status(500).json(errorResponse);
+  }
+});
+
 export { router as adminRoutes };
 

@@ -21,6 +21,9 @@ export interface AppConfig {
   frontendUrl: string;
   backendUrl: string;
 
+  // CORS
+  corsAllowedOrigins: string[];
+
   // Server
   port: number;
 
@@ -131,6 +134,34 @@ function loadConfig(): AppConfig {
     throw new Error("FRONTEND_URL is required in production");
   }
 
+  // CORS allowed origins
+  // Parse from comma-separated env var, or fall back to frontendUrl
+  // In development, also allow common localhost ports
+  const corsAllowedOrigins: string[] = (() => {
+    const envOrigins = process.env.CORS_ALLOWED_ORIGINS;
+    if (envOrigins) {
+      // Parse comma-separated list, trim whitespace, filter empty
+      return envOrigins.split(",").map(o => o.trim()).filter(Boolean);
+    }
+    // Fall back to frontendUrl if set
+    const origins: string[] = [];
+    if (frontendUrl) {
+      origins.push(frontendUrl);
+    }
+    // In development, add common localhost origins
+    if (isDevelopment) {
+      origins.push(
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://localhost:4173", // Vite preview
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000"
+      );
+    }
+    // Deduplicate
+    return [...new Set(origins)];
+  })();
+
   // Server
   const port = parseInt(process.env.PORT || "3000", 10);
 
@@ -185,6 +216,7 @@ function loadConfig(): AppConfig {
     isProduction,
     frontendUrl,
     backendUrl,
+    corsAllowedOrigins,
     port,
     databaseUrl,
     jwtSecret,
@@ -243,6 +275,9 @@ export function validateConfig(): void {
     }
     if (!config.backendUrl) {
       throw new Error("BACKEND_URL is required in production");
+    }
+    if (config.corsAllowedOrigins.length === 0) {
+      throw new Error("CORS_ALLOWED_ORIGINS or FRONTEND_URL is required in production");
     }
   }
 }

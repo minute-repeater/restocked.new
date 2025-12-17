@@ -2,7 +2,6 @@ import "dotenv/config";
 import * as Sentry from "@sentry/node";
 import { expressIntegration, expressErrorHandler } from "@sentry/node";
 import express, { type Express } from "express";
-import cors from "cors";
 import { fileURLToPath } from "url";
 import { productRoutes } from "./routes/products.js";
 import { variantRoutes } from "./routes/variants.js";
@@ -16,6 +15,7 @@ import { userPlanRoutes } from "./routes/userPlan.js";
 import { requestLoggingMiddleware } from "./middleware/requestLogging.js";
 import { postRateLimiter } from "./middleware/rateLimiting.js";
 import { requireAuth } from "./middleware/requireAuth.js";
+import { corsMiddleware, getCorsConfig } from "./middleware/corsMiddleware.js";
 import { config } from "../config.js";
 import { formatError, payloadTooLargeError, ErrorCodes } from "./utils/errors.js";
 import { logger } from "./utils/logger.js";
@@ -56,18 +56,14 @@ export function createServer(): Express {
   // Sentry Express integration automatically handles request tracing
   // No need for separate middleware - expressIntegration() handles it
 
-  // CORS middleware - Temporarily allow all origins to unblock OAuth
-  // TODO: Harden CORS once OAuth flow is stable
-  app.use(
-    cors({
-      origin: (_origin, callback) => callback(null, true),
-      credentials: true,
-      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-      allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-      preflightContinue: false,
-      optionsSuccessStatus: 204,
-    })
-  );
+  // CORS middleware - Security-hardened with origin whitelist
+  // Configure via CORS_ALLOWED_ORIGINS env var or falls back to FRONTEND_URL
+  app.use(corsMiddleware);
+  
+  // Log CORS config on startup (development only)
+  if (config.isDevelopment) {
+    logger.info({ corsConfig: getCorsConfig() }, "CORS configuration loaded");
+  }
 
   // Middleware
   // Request size limit: 1MB to prevent DoS attacks
@@ -87,6 +83,9 @@ export function createServer(): Express {
   app.use("/me/settings", userSettingsRoutes);
   app.use("/me", userPlanRoutes);
   
+  // Notification routes (require authentication) - new API under /notifications
+  app.use("/notifications", requireAuth, notificationRoutes);
+  
   // Admin routes (require authentication and admin role)
   app.use("/admin", adminRoutes);
 
@@ -98,12 +97,6 @@ export function createServer(): Express {
       await query("SELECT 1");
       const dbStatus = "connected";
 
-      // Get scheduler statuses
-      const { checkScheduler } = await import("../jobs/checkScheduler.js");
-      const { emailDeliveryScheduler } = await import("../jobs/emailDeliveryScheduler.js");
-      const checkSchedulerStatus = checkScheduler.getStatus();
-      const emailSchedulerStatus = emailDeliveryScheduler.getStatus();
-
       // Get app version (async)
       const { getAppVersionAsync } = await import("../config.js");
       const appVersion = await getAppVersionAsync();
@@ -113,17 +106,11 @@ export function createServer(): Express {
         version: appVersion,
         environment: config.appEnv,
         database: dbStatus,
+        // Schedulers run in separate worker process
+        // Use /health on the worker service to check scheduler status
         schedulers: {
-          check: {
-            enabled: checkSchedulerStatus.enabled,
-            running: checkSchedulerStatus.isRunning,
-            intervalMinutes: checkSchedulerStatus.intervalMinutes,
-          },
-          email: {
-            enabled: emailSchedulerStatus.enabled,
-            running: emailSchedulerStatus.isRunning,
-            intervalMinutes: emailSchedulerStatus.intervalMinutes,
-          },
+          note: "Schedulers run in separate worker process",
+          workerRequired: true,
         },
         timestamp: new Date().toISOString(),
       });
@@ -243,51 +230,10 @@ if (isMainModule) {
     process.exit(1);
   }
   
-  // Start scheduler service if enabled (non-blocking)
-  (async () => {
-    try {
-      const { schedulerService } = await import("../scheduler/schedulerService.js");
-      const { schedulerConfig } = await import("../scheduler/schedulerConfig.js");
-      
-      if (schedulerConfig.ENABLE_SCHEDULER) {
-        schedulerService.start();
-        logger.info({ intervalMinutes: schedulerConfig.CHECK_INTERVAL_MINUTES }, "Scheduler started");
-      } else {
-        logger.info("Scheduler is disabled");
-      }
-    } catch (error: any) {
-      logger.error({ error: error.message }, "Failed to start scheduler");
-      // Don't exit - server can still run without scheduler
-    }
-  })();
-
-  // Start email delivery scheduler (uses config) (non-blocking)
-  (async () => {
-    try {
-      const { emailDeliveryScheduler } = await import("../jobs/emailDeliveryScheduler.js");
-      emailDeliveryScheduler.start();
-      if (config.enableEmailScheduler) {
-        logger.info({ intervalMinutes: config.emailDeliveryIntervalMinutes }, "Email delivery scheduler started");
-      }
-    } catch (error: any) {
-      logger.error({ error: error.message }, "Failed to start email delivery scheduler");
-      // Don't exit - server can still run without email scheduler
-    }
-  })();
-
-  // Start check scheduler (uses config) (non-blocking)
-  (async () => {
-    try {
-      const { checkScheduler } = await import("../jobs/checkScheduler.js");
-      checkScheduler.start();
-      if (config.enableCheckScheduler) {
-        logger.info({ intervalMinutes: config.checkSchedulerIntervalMinutes }, "Check scheduler started");
-      }
-    } catch (error: any) {
-      logger.error({ error: error.message }, "Failed to start check scheduler");
-      // Don't exit - server can still run without check scheduler
-    }
-  })();
+  // NOTE: Schedulers now run in a separate worker process
+  // Start the worker with: npm run start:worker
+  // This allows independent scaling and process isolation
+  logger.info("API server running without schedulers (use npm run start:worker for background jobs)");
   
   // Start server ONLY after database connection is verified
   app.listen(port, () => {
