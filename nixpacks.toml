@@ -16,4 +16,6 @@ nixPkgs = ["nodejs_20"]
 cmds = ["rm -rf dist", "npm run build"]
 
 [start]
+# Default start command for API service
+# Worker service overrides this with: npm run start:worker
 cmd = "npm start"
