@@ -8,7 +8,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && tsc scripts/telegram.ts --outDir dist/scripts --module Node16 --moduleResolution node16 --target es2020 --esModuleInterop --skipLibCheck",
     "start": "node dist/db/runMigrationsAndStart.js",
     "start:server-only": "node dist/api/server.js",
     "start:worker": "node dist/worker/scheduler.js",
@@ -22,7 +22,8 @@
     "migrate": "node ./dist/db/migrate.js",
     "verify-migrations": "NODE_OPTIONS='--loader ts-node/esm' node scripts/verify-migrations.ts",
     "seed:prod-user": "NODE_OPTIONS='--loader ts-node/esm' node scripts/seed-prod-user.ts",
-    "create-test-user": "NODE_OPTIONS='--loader ts-node/esm' node scripts/create-test-user.ts"
+    "create-test-user": "NODE_OPTIONS='--loader ts-node/esm' node scripts/create-test-user.ts",
+    "test:telegram": "node dist/scripts/telegram.js"
   },
   "keywords": [
     "scraping",
