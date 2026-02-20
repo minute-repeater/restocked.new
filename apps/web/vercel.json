@@ -1,5 +1,6 @@
 {
-  "buildCommand": "cd ../.. && pnpm install && pnpm build:web",
+  "installCommand": "cd ../.. && pnpm install",
+  "buildCommand": "cd ../.. && pnpm --filter @restocked/shared build && pnpm --filter @restocked/web build",
   "outputDirectory": "dist",
   "framework": "vite",
   "rewrites": [
