@@ -1,0 +1,27 @@
+{
+  "name": "restocked-now",
+  "private": true,
+  "scripts": {
+    "dev:api": "pnpm --filter @restocked/api dev",
+    "dev:worker": "pnpm --filter @restocked/worker dev",
+    "dev:web": "pnpm --filter @restocked/web dev",
+    "build": "pnpm -r build",
+    "build:api": "pnpm --filter @restocked/api build",
+    "build:worker": "pnpm --filter @restocked/worker build",
+    "build:web": "pnpm --filter @restocked/web build",
+    "db:generate": "pnpm --filter @restocked/db generate",
+    "db:migrate": "pnpm --filter @restocked/db migrate",
+    "db:studio": "pnpm --filter @restocked/db studio",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.1"
+}

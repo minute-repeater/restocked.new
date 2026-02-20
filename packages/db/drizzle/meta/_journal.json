@@ -1,0 +1,27 @@
+{
+  "version": "5",
+  "dialect": "pg",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1770301578588,
+      "tag": "0000_tidy_katie_power",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1770462693883,
+      "tag": "0001_naive_legion",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1770940800000,
+      "tag": "0002_google_oauth",
+      "breakpoints": true
+    }
+  ]
+}
