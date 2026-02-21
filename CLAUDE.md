@@ -57,6 +57,9 @@ The `packages/shared/src/index.ts` must NOT export the logger. Pino is a Node.js
 ### After modifying packages/shared
 Always rebuild: `pnpm --filter @restocked/shared build` — the `dist/` can get stale. Also clear Vite cache: `rm -rf apps/web/node_modules/.vite`
 
+### CRITICAL: .tsbuildinfo files must NOT be committed
+The root tsconfig has `composite: true`, which makes tsc use `.tsbuildinfo` for incremental builds. If stale `.tsbuildinfo` is committed, tsc will silently skip building on CI (empty `dist/`). These files are in `.gitignore` — never commit them.
+
 ### Environment variables
 Both worker and db scripts need `--env-file=../../.env` flag (already configured in package.json scripts). The `.env` file lives at the monorepo root.
 
@@ -152,12 +155,26 @@ Results merged by confidence — highest-confidence source wins per field.
 
 ## Deployment
 
-| Service | Platform | Config |
-|---------|----------|--------|
-| API | Railway | `railway.toml` — Nixpacks builder |
-| Worker | Railway | Same repo, separate service |
-| Database | Railway | PostgreSQL plugin |
-| Frontend | Vercel | `apps/web/vercel.json` — SPA rewrites |
+| Service | Platform | Config | Status |
+|---------|----------|--------|--------|
+| Frontend | Vercel | `apps/web/vercel.json` — root dir `apps/web` | Deployed to `app.restocked.now` / `www.restocked.now` |
+| API | Railway | `railway.toml` — Nixpacks, explicit build/start commands | Config ready, needs env vars |
+| Worker | Railway | Same repo, separate service (override start command) | Needs separate Railway service |
+| Database | Railway | PostgreSQL plugin | Needs provisioning |
+
+### Vercel build flow
+1. Install: `corepack enable && cd ../.. && pnpm install --frozen-lockfile`
+2. Build: shared package tsc → vite build (skips web tsc to avoid pnpm symlink resolution issues)
+3. Node.js pinned to 20 via `.node-version`
+
+### Railway build flow
+1. Nixpacks auto-detects pnpm from `pnpm-lock.yaml`
+2. Build: shared → db → scraper → api (all via `pnpm --filter`)
+3. Start: `node apps/api/dist/server.js`
+4. Worker service: override start command to `node apps/worker/dist/scheduler.js`
+
+### GitHub repo
+`minute-repeater/restocked.new` — auto-deploys to Vercel on push to `main`
 
 Env vars needed in production: `DATABASE_URL`, `JWT_SECRET`, `RESEND_API_KEY`, `FROM_EMAIL`, `FRONTEND_URL`, `NODE_ENV=production`
 
