@@ -1,5 +1,5 @@
 {
-  "installCommand": "cd ../.. && pnpm install",
+  "installCommand": "corepack enable && cd ../.. && pnpm install --frozen-lockfile",
   "buildCommand": "cd ../.. && pnpm --filter @restocked/shared build && pnpm --filter @restocked/web build",
   "outputDirectory": "dist",
   "framework": "vite",

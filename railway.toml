@@ -1,6 +1,10 @@
 [build]
 builder = "nixpacks"
+buildCommand = "pnpm --filter @restocked/shared build && pnpm --filter @restocked/db build && pnpm --filter @restocked/scraper build && pnpm --filter @restocked/api build"
 
 [deploy]
+startCommand = "node apps/api/dist/server.js"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
+healthcheckPath = "/health"
+healthcheckTimeout = 300
