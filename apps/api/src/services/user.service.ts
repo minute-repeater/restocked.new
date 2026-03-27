@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt';
-import { db, users, userNotificationSettings, eq } from '@restocked/db';
+import { db, users, userNotificationSettings, eq } from '@covet/db';
 import { AppError } from '../middleware/errorHandler.js';
 
 const SALT_ROUNDS = 12;
@@ -129,6 +129,58 @@ export async function findOrCreateGoogleUser(
   return newUser;
 }
 
+export async function getNotificationSettings(userId: string) {
+  const settings = await db.query.userNotificationSettings.findFirst({
+    where: eq(userNotificationSettings.userId, userId),
+  });
+
+  if (!settings) {
+    // Create default settings if missing (handles legacy users)
+    const [created] = await db
+      .insert(userNotificationSettings)
+      .values({ userId, emailEnabled: 'true' })
+      .returning();
+    return {
+      emailEnabled: true,
+      emailAddress: null as string | null,
+    };
+  }
+
+  return {
+    emailEnabled: settings.emailEnabled === 'true',
+    emailAddress: settings.emailAddress,
+  };
+}
+
+export async function updateNotificationSettings(
+  userId: string,
+  updates: { emailEnabled?: boolean; emailAddress?: string | null }
+) {
+  const values: Record<string, unknown> = { updatedAt: new Date() };
+
+  if (updates.emailEnabled !== undefined) {
+    values.emailEnabled = updates.emailEnabled ? 'true' : 'false';
+  }
+  if (updates.emailAddress !== undefined) {
+    values.emailAddress = updates.emailAddress;
+  }
+
+  const [updated] = await db
+    .update(userNotificationSettings)
+    .set(values)
+    .where(eq(userNotificationSettings.userId, userId))
+    .returning();
+
+  if (!updated) {
+    throw new AppError(404, 'Notification settings not found');
+  }
+
+  return {
+    emailEnabled: updated.emailEnabled === 'true',
+    emailAddress: updated.emailAddress,
+  };
+}
+
 export async function getUserById(userId: string) {
   const user = await db.query.users.findFirst({
     where: eq(users.id, userId),
@@ -143,5 +195,8 @@ export async function getUserById(userId: string) {
     email: user.email,
     plan: user.plan,
     createdAt: user.createdAt,
+    hasSubscription: !!user.stripeSubscriptionId,
+    cancelAtPeriodEnd: user.stripeCancelAtPeriodEnd,
+    currentPeriodEnd: user.stripeCurrentPeriodEnd,
   };
 }

@@ -2,7 +2,7 @@
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "pnpm --filter @restocked/shared build && pnpm --filter @restocked/db build && pnpm --filter @restocked/scraper build && pnpm --filter @restocked/api build"
+    "buildCommand": "pnpm --filter @covet/shared build && pnpm --filter @covet/db build && pnpm --filter @covet/scraper build && pnpm --filter @covet/api build"
   },
   "deploy": {
     "startCommand": "node apps/api/dist/server.js",

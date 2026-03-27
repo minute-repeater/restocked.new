@@ -2,11 +2,14 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import { createLogger } from '@restocked/shared/logger';
+import { createLogger } from '@covet/shared/logger';
 import { config } from './config.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import authRoutes from './routes/auth.routes.js';
 import trackingRoutes from './routes/tracking.routes.js';
+import billingRoutes from './routes/billing.routes.js';
+import webhookRoutes from './routes/webhook.routes.js';
+import settingsRoutes from './routes/settings.routes.js';
 
 const log = createLogger('api');
 const app = express();
@@ -45,6 +48,9 @@ const authLimiter = rateLimit({
 
 app.use(globalLimiter);
 
+// Stripe webhook needs raw body for signature verification — must be before express.json()
+app.use('/webhooks/stripe', express.raw({ type: 'application/json' }), webhookRoutes);
+
 // Body parsing
 app.use(express.json());
 
@@ -61,6 +67,8 @@ app.use('/auth/reset-password', authLimiter);
 app.use('/auth/google', authLimiter);
 app.use('/auth', authRoutes);
 app.use('/tracking', trackingRoutes);
+app.use('/billing', billingRoutes);
+app.use('/settings', settingsRoutes);
 
 // Error handling
 app.use(errorHandler);

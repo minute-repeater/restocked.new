@@ -1,5 +1,5 @@
 {
-  "name": "@restocked/scraper",
+  "name": "@covet/scraper",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -16,7 +16,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@restocked/shared": "workspace:*",
+    "@covet/shared": "workspace:*",
     "cheerio": "^1.0.0-rc.12",
     "playwright": "^1.41.1"
   },

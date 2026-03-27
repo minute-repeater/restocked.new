@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 
 // Mock all heavy dependencies that stockChecker imports
-vi.mock('@restocked/db', () => ({
+vi.mock('@covet/db', () => ({
   db: {},
   products: {},
   trackedItems: {},
@@ -16,12 +16,12 @@ vi.mock('@restocked/db', () => ({
   sql: vi.fn(),
 }));
 
-vi.mock('@restocked/scraper', () => ({
+vi.mock('@covet/scraper', () => ({
   extractProductData: vi.fn(),
   closeBrowser: vi.fn(),
 }));
 
-vi.mock('@restocked/shared/logger', () => ({
+vi.mock('@covet/shared/logger', () => ({
   createLogger: () => ({
     info: vi.fn(),
     error: vi.fn(),

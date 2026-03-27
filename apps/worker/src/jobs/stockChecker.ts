@@ -11,13 +11,22 @@ import {
   desc,
   isNull,
   sql,
-} from '@restocked/db';
-import { extractProductData, closeBrowser } from '@restocked/scraper';
-import { getPlanLimits, type NotificationPayload, type NotificationType } from '@restocked/shared';
-import { createLogger } from '@restocked/shared/logger';
+} from '@covet/db';
+import { extractProductData, closeBrowser } from '@covet/scraper';
+import { getPlanLimits, type NotificationPayload, type NotificationType } from '@covet/shared';
+import { createLogger } from '@covet/shared/logger';
 import { sendEmailNotification } from '../notifications/email.js';
 
 const log = createLogger('worker:stockChecker');
+
+const SCRAPE_RETRY_DELAY_MS = 5000;
+const MAX_CONSECUTIVE_FAILURES = 5;
+
+/**
+ * In-memory consecutive failure counter per product.
+ * Resets on successful scrape or worker restart (acceptable for beta).
+ */
+const consecutiveFailures = new Map<string, number>();
 
 export interface ProductToCheck {
   productId: string;
@@ -88,31 +97,48 @@ async function getProductsToCheck(): Promise<ProductToCheck[]> {
     .innerJoin(users, eq(trackedItems.userId, users.id))
     .where(eq(trackedItems.isActive, true));
 
-  // Filter by check interval and get last check data
+  if (results.length === 0) return [];
+
+  // Batch-fetch latest stock checks for all products in a single query
+  // Uses DISTINCT ON to get the most recent check per product+variant
+  const productIds = [...new Set(results.map(r => r.productId))];
+  const latestChecks = await db.execute<{
+    product_id: string;
+    variant_id: string | null;
+    in_stock: boolean;
+    price: number | null;
+    checked_at: Date;
+  }>(sql`
+    SELECT DISTINCT ON (product_id, variant_id)
+      product_id, variant_id, in_stock, price, checked_at
+    FROM stock_checks
+    WHERE product_id IN (${sql.join(productIds.map(id => sql`${id}`), sql`, `)})
+    ORDER BY product_id, variant_id, checked_at DESC
+  `);
+
+  // Build lookup map: "productId:variantId" -> latest check
+  const checkRows = [...latestChecks];
+  const checkMap = new Map<string, (typeof checkRows)[0]>();
+  for (const check of checkRows) {
+    const key = `${check.product_id}:${check.variant_id ?? 'null'}`;
+    checkMap.set(key, check);
+  }
+
+  // Filter by check interval using the batch-fetched data
   const toCheck: ProductToCheck[] = [];
+  const now = Date.now();
 
   for (const row of results) {
     const limits = getPlanLimits(row.userPlan);
     const intervalMs = limits.checkIntervalMinutes * 60 * 1000;
 
-    // Get last check for this product+variant
-    const [lastCheck] = await db
-      .select()
-      .from(stockChecks)
-      .where(
-        and(
-          eq(stockChecks.productId, row.productId),
-          row.variantId
-            ? eq(stockChecks.variantId, row.variantId)
-            : isNull(stockChecks.variantId)
-        )
-      )
-      .orderBy(desc(stockChecks.checkedAt))
-      .limit(1);
+    const checkKey = `${row.productId}:${row.variantId ?? 'null'}`;
+    const lastCheck = checkMap.get(checkKey);
 
     // Check if enough time has passed since last check
-    const lastCheckTime = lastCheck?.checkedAt?.getTime() ?? 0;
-    const now = Date.now();
+    const lastCheckTime = lastCheck?.checked_at
+      ? new Date(lastCheck.checked_at).getTime()
+      : 0;
 
     if (now - lastCheckTime >= intervalMs) {
       toCheck.push({
@@ -124,7 +150,7 @@ async function getProductsToCheck(): Promise<ProductToCheck[]> {
         userId: row.userId,
         userEmail: row.userEmail,
         targetPrice: row.targetPrice,
-        lastInStock: lastCheck?.inStock ?? null,
+        lastInStock: lastCheck?.in_stock ?? null,
         lastPrice: lastCheck?.price ?? null,
       });
     }
@@ -135,12 +161,19 @@ async function getProductsToCheck(): Promise<ProductToCheck[]> {
 
 /**
  * Checks a single product and sends notifications if needed.
+ * Retries once after a delay if the initial scrape fails.
  */
 async function checkProduct(product: ProductToCheck): Promise<void> {
   log.info({ url: product.productUrl }, 'Checking product');
 
+  const failureKey = `${product.productId}:${product.variantId ?? 'null'}`;
+
   try {
-    const { data } = await extractProductData(product.productUrl);
+    // Attempt scrape with one retry
+    const { data } = await scrapeWithRetry(product.productUrl);
+
+    // Reset consecutive failure counter on success
+    consecutiveFailures.delete(failureKey);
 
     // Record the check
     await db.insert(stockChecks).values({
@@ -170,7 +203,42 @@ async function checkProduct(product: ProductToCheck): Promise<void> {
       await sendNotification(product, data, notificationType);
     }
   } catch (error) {
-    log.error({ err: error, url: product.productUrl }, 'Failed to check product');
+    // Track consecutive failures
+    const failures = (consecutiveFailures.get(failureKey) ?? 0) + 1;
+    consecutiveFailures.set(failureKey, failures);
+
+    log.error(
+      { err: error, url: product.productUrl, consecutiveFailures: failures },
+      'Failed to check product'
+    );
+
+    // After MAX_CONSECUTIVE_FAILURES, deactivate tracking to stop wasting resources
+    if (failures >= MAX_CONSECUTIVE_FAILURES) {
+      log.warn(
+        { productId: product.productId, trackedItemId: product.trackedItemId, failures },
+        'Deactivating tracked item after repeated scrape failures'
+      );
+
+      await db
+        .update(trackedItems)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(eq(trackedItems.id, product.trackedItemId));
+
+      consecutiveFailures.delete(failureKey);
+    }
+  }
+}
+
+/**
+ * Attempts to scrape a product URL, retrying once after a delay on failure.
+ */
+async function scrapeWithRetry(url: string) {
+  try {
+    return await extractProductData(url);
+  } catch (firstError) {
+    log.warn({ err: firstError, url }, 'Scrape failed, retrying after delay');
+    await sleep(SCRAPE_RETRY_DELAY_MS);
+    return await extractProductData(url);
   }
 }
 
@@ -233,9 +301,9 @@ async function sendNotification(
     })
     .returning();
 
-  // Send email if enabled
-  if (settings?.emailEnabled === 'true') {
-    const emailTo = settings.emailAddress || product.userEmail;
+  // Send email if enabled (default to sending if no settings row exists)
+  if (!settings || settings.emailEnabled === 'true') {
+    const emailTo = settings?.emailAddress || product.userEmail;
 
     const payload: NotificationPayload = {
       type,

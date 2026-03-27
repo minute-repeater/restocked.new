@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { useAuth } from '../hooks/useAuth';
+import { SEO } from '../components/SEO';
 
 export function Home() {
   const { user } = useAuth();
@@ -9,6 +11,22 @@ export function Home() {
 
   return (
     <>
+      <SEO
+        title="Covet — Secure the Pieces Worth Waiting For"
+        description="Covet monitors luxury boutiques, Shopify stores, and major retailers — notifying you the instant your desired pieces return to stock or drop in price."
+        path="/"
+      />
+      <Helmet>
+        <script type="application/ld+json">
+          {JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'WebSite',
+            name: 'Covet',
+            url: 'https://covet.deals',
+            description: 'Refined stock alerts for luxury and boutique fashion. Get notified when items restock or drop in price.',
+          })}
+        </script>
+      </Helmet>
       {/* Hero */}
       <section className="relative px-8 pt-24 pb-32 lg:pt-32 lg:pb-48">
         <div className="mx-auto max-w-[1280px] text-center">
@@ -84,7 +102,7 @@ export function Home() {
                   <p className="text-[10px] text-text-muted uppercase tracking-tight mt-1">Champagne / Petite</p>
                   <div className="flex items-center gap-2 mt-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-                    <span className="text-[9px] uppercase tracking-widest text-green-600 italic">Restocked!</span>
+                    <span className="text-[9px] uppercase tracking-widest text-green-600 italic">Back in Stock!</span>
                   </div>
                 </div>
               </div>

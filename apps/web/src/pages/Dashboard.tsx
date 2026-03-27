@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import { getTrackedItems, deleteTrackedItem } from '../api/tracking';
 import { TrackedItemCard } from '../components/TrackedItemCard';
 import { ItemDetailPanel } from '../components/ItemDetailPanel';
-import { getPlanLimits } from '@restocked/shared';
+import { getPlanLimits } from '@covet/shared';
 
 export function Dashboard() {
   const { token, user, isLoading: authLoading } = useAuth();
@@ -162,9 +162,12 @@ export function Dashboard() {
               <p className="text-[11px] text-text-muted text-center mt-3 px-4 leading-relaxed tracking-wide">
                 Upgrade your membership to track more items.
               </p>
-              <button className="mt-6 bg-white border border-brand-gold/30 text-brand-gold text-[10px] font-bold uppercase tracking-widest px-6 py-2.5 rounded-xl hover:bg-brand-gold hover:text-white transition-all">
+              <Link
+                to="/dashboard/billing"
+                className="mt-6 bg-white border border-brand-gold/30 text-brand-gold text-[10px] font-bold uppercase tracking-widest px-6 py-2.5 rounded-xl hover:bg-brand-gold hover:text-white transition-all"
+              >
                 View Upgrades
-              </button>
+              </Link>
             </div>
           )}
         </div>

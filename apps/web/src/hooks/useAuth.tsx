@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import type { AuthResponse } from '@restocked/shared';
+import type { AuthResponse } from '@covet/shared';
 import { getMe } from '../api/auth';
 import { setOnUnauthorized } from '../api/client';
 
@@ -13,7 +13,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const TOKEN_KEY = 'restocked_token';
+const TOKEN_KEY = 'covet_token';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);

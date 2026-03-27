@@ -13,20 +13,41 @@ import { extractFromJsonLd } from './parser/jsonld.js';
 import { extractFromMeta } from './parser/meta.js';
 import { extractFromDom } from './parser/dom.js';
 import { extractProductData } from './extractor.js';
-import type { ExtractedProductData } from '@restocked/shared';
+import type { ExtractedProductData } from '@covet/shared';
 
 // ── Retailer validation suite ──────────────────────────────────────────────
+// URLs verified active as of Feb 2026. Grouped by expected difficulty.
 const VALIDATION_URLS = [
+  // ── Shopify-based stores (JSON-LD expected, highest success rate) ──
   { brand: 'Bode', url: 'https://bode.com/products/storytime-quilt-jacket-red-multi' },
-  { brand: "Drake's", url: 'https://www.drakes.com/collections/casentino/products/orange-casentino-wool-half-zip-pullover-fleece' },
+  { brand: "Drake's", url: 'https://us.drakes.com/products/green-cotton-cashmere-sweatshirt' },
   { brand: 'Evan Kinori', url: 'https://evankinori.com/products/field-shirt-wool-flannel' },
-  { brand: 'Lemaire', url: 'https://us.lemaire.fr/products/large-croissant-bag-dark-chocolate' },
-  { brand: 'Jil Sander', url: 'https://www.jilsander.com/en-us/logo-t-shirt/J47GC0001-J45047.html' },
-  { brand: 'SSENSE', url: 'https://www.ssense.com/en-us/men/product/auralee/brown-super-light-wool-shirt/13768871' },
-  { brand: 'END.', url: 'https://www.endclothing.com/us/beams-plus-2-pleat-chino-38-23-0097-874-20.html' },
+  { brand: 'Stüssy', url: 'https://www.stussy.com/products/1905000-basic-stussy-tee-black' },
   { brand: 'Kith', url: 'https://kith.com/collections/kith-classics/products/khm034166-001' },
-  { brand: 'Entire Studios', url: 'https://www.entirestudios.com/product/soa-puffer-gunmetal' },
+  { brand: 'A.P.C.', url: 'https://www.apc-us.com/products/petit-new-standard-codbs-m09047' },
+  { brand: 'HAVEN', url: 'https://havenshop.com/products/haven-stratus-t-shirt-superfine-wool-jersey-black-ss26' },
+  { brand: 'Bodega', url: 'https://bdgastore.com/products/essential-adsb-patch-logo-sweatshirt' },
+  { brand: 'Dover St Market', url: 'https://shop-us.doverstreetmarket.com/products/play-t-shirt-black-black-16164' },
+
+  // ── Non-Shopify with structured data ──
+  { brand: 'Our Legacy', url: 'https://www.ourlegacy.com/new-box-tshirt-black-core' },
+  { brand: 'Norse Projects', url: 'https://www.norseprojects.com/store/n01-0606-0001-johannes-standard-logo' },
+  { brand: 'Acne Studios', url: 'https://www.acnestudios.com/us/en/t-shirt---regular-fit-black/CL0309-900.html' },
+
+  // ── Luxury multi-brand retailers (JS-heavy, may need browser) ──
+  { brand: 'SSENSE', url: 'https://www.ssense.com/en-us/men/product/acne-studios/black-logo-t-shirt/18162981' },
+  { brand: 'Browns', url: 'https://www.brownsfashion.com/products/jacquemus-the-salon-shoulder-bag-olbss2600164300' },
+  { brand: 'Harvey Nichols', url: 'https://www.harveynichols.com/loewe/puzzle-mini-leather-cross-body-bag-764198-tann-2530-tan-92553/' },
+  { brand: 'Luisaviaroma', url: 'https://www.luisaviaroma.com/en-us/p/nike/men/sneakers/74I-4OZ226' },
+  { brand: 'Selfridges', url: 'https://www.selfridges.com/US/en/product/acne-studios-face-logo-patch-wool-beanie-hat_R03780487/' },
+
+  // ── Known anti-bot (stretch goals — heavy WAF/Akamai/Cloudflare) ──
+  { brand: 'Mytheresa', url: 'https://www.mytheresa.com/us/en/men/bottega-veneta-medium-intrecciato-leather-backpack-black-p00890698' },
   { brand: 'Salomon', url: 'https://www.salomon.com/en-us/shop/product/xt-6-lg3222.html' },
+  { brand: 'Net-a-Porter', url: 'https://www.net-a-porter.com/en-us/shop/product/toteme/clothing/coats/signature-wool-blend-coat/46353151655202188' },
+  { brand: 'Mr Porter', url: 'https://www.mrporter.com/en-us/mens/product/tom-ford/shoes/lace-up-boots/suede-boots/666467151989754' },
+  { brand: 'END.', url: 'https://www.endclothing.com/us/beams-plus-2-pleat-chino-38-23-0097-874-20.html' },
+  { brand: 'Farfetch', url: 'https://www.farfetch.com/shopping/men/prada-re-nylon-logo-baseball-cap-item-20625058.aspx' },
 ];
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -193,11 +214,12 @@ async function runBatch(jsonOutput: boolean): Promise<void> {
   // Summary
   const passed = results.filter(r => r.name && r.stock).length;
   const total = results.length;
-  const icon = passed >= 7 ? CHECK : CROSS;
+  const passTarget = Math.ceil(total * 0.8);
+  const icon = passed >= passTarget ? CHECK : CROSS;
 
   console.log(`\n${BOLD}═══ SUMMARY ═══${RESET}`);
   console.log(`${icon} ${passed}/${total} passed (name + stock extracted)`);
-  console.log(`${DIM}Pass criteria: ≥7/${total}${RESET}`);
+  console.log(`${DIM}Pass criteria: ≥${passTarget}/${total} (80%)${RESET}`);
 
   if (jsonOutput) {
     console.log(`\n${BOLD}JSON Output:${RESET}`);
@@ -221,7 +243,7 @@ const args = process.argv.slice(2);
 
 if (args.includes('--help') || args.includes('-h')) {
   console.log(`
-${BOLD}Restocked.now Scraper CLI${RESET}
+${BOLD}Covet Scraper CLI${RESET}
 
 ${BOLD}Usage:${RESET}
   pnpm tsx packages/scraper/src/cli.ts <url>        Scrape a single URL (detailed output)

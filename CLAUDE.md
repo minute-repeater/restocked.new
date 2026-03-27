@@ -50,12 +50,12 @@ pnpm dev:worker                # start stock checker cron
 ### CRITICAL: pino logger must NOT be in shared barrel export
 The `packages/shared/src/index.ts` must NOT export the logger. Pino is a Node.js-only library. If it ends up in the barrel export, Vite will try to bundle it for the browser → blank white screen.
 
-- Server code: `import { createLogger } from '@restocked/shared/logger'`
-- Browser code: `import { getPlanLimits } from '@restocked/shared'` (safe, no pino)
+- Server code: `import { createLogger } from '@covet/shared/logger'`
+- Browser code: `import { getPlanLimits } from '@covet/shared'` (safe, no pino)
 - The separate export path is defined in `packages/shared/package.json` under `"exports"`
 
 ### After modifying packages/shared
-Always rebuild: `pnpm --filter @restocked/shared build` — the `dist/` can get stale. Also clear Vite cache: `rm -rf apps/web/node_modules/.vite`
+Always rebuild: `pnpm --filter @covet/shared build` — the `dist/` can get stale. Also clear Vite cache: `rm -rf apps/web/node_modules/.vite`
 
 ### CRITICAL: .tsbuildinfo files must NOT be committed
 The root tsconfig has `composite: true`, which makes tsc use `.tsbuildinfo` for incremental builds. If stale `.tsbuildinfo` is committed, tsc will silently skip building on CI (empty `dist/`). These files are in `.gitignore` — never commit them.
@@ -149,16 +149,16 @@ Results merged by confidence — highest-confidence source wins per field.
 
 - Framework: **vitest**
 - Run all: `pnpm test`
-- Run one package: `pnpm --filter @restocked/shared test`
-- Mock pattern for logger: `vi.mock('@restocked/shared/logger', () => ({ createLogger: () => ({ info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() }) }))`
-- Mock pattern for DB: mock `@restocked/db` at module level
+- Run one package: `pnpm --filter @covet/shared test`
+- Mock pattern for logger: `vi.mock('@covet/shared/logger', () => ({ createLogger: () => ({ info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() }) }))`
+- Mock pattern for DB: mock `@covet/db` at module level
 
 ## Deployment
 
 | Service | Platform | Config | Status |
 |---------|----------|--------|--------|
-| Frontend | Vercel | `apps/web/vercel.json` — root dir `apps/web` | Deployed to `app.restocked.now` / `www.restocked.now` |
-| API | Railway | `railway.toml` — Nixpacks, explicit build/start commands | Config ready, needs env vars |
+| Frontend | Vercel | `apps/web/vercel.json` — root dir `apps/web` | Deployed to `app.covet.deals` / `www.covet.deals` |
+| API | Railway | `railway.json` — Nixpacks, explicit build/start commands | Config ready, needs env vars |
 | Worker | Railway | Same repo, separate service (override start command) | Needs separate Railway service |
 | Database | Railway | PostgreSQL plugin | Needs provisioning |
 

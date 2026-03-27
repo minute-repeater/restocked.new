@@ -10,7 +10,7 @@ import {
   updateTrackedItem,
   deleteTrackedItem,
 } from '../services/tracking.service.js';
-import { isValidProductUrl } from '@restocked/shared';
+import { isValidProductUrl } from '@covet/shared';
 import { AppError } from '../middleware/errorHandler.js';
 
 const router: RouterType = Router();
@@ -47,9 +47,12 @@ router.post('/', async (req, res, next) => {
     const { userId } = req as AuthenticatedRequest;
     const { url, targetPrice, variantId } = addItemSchema.parse(req.body);
 
-    const item = await addTrackedItem(userId, url, targetPrice, variantId);
+    const rawItem = await addTrackedItem(userId, url, targetPrice, variantId);
 
-    res.status(201).json({ item });
+    // Return full item detail (with product info + latest check) for immediate UI display
+    const detail = await getTrackedItemById(userId, rawItem.id);
+
+    res.status(201).json(detail);
   } catch (error) {
     next(error);
   }

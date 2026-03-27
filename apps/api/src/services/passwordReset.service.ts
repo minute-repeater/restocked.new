@@ -1,8 +1,8 @@
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import { Resend } from 'resend';
-import { db, users, passwordResetTokens, eq, and, isNull } from '@restocked/db';
-import { createLogger } from '@restocked/shared/logger';
+import { db, users, passwordResetTokens, eq, and, isNull } from '@covet/db';
+import { createLogger } from '@covet/shared/logger';
 import { config } from '../config.js';
 import { AppError } from '../middleware/errorHandler.js';
 
@@ -61,7 +61,7 @@ export async function requestPasswordReset(email: string): Promise<void> {
     await resend.emails.send({
       from: config.fromEmail,
       to: user.email,
-      subject: 'Reset your Restocked.now password',
+      subject: 'Reset your Covet password',
       html: getResetEmailHtml(resetUrl),
     });
 
@@ -136,7 +136,7 @@ function getResetEmailHtml(resetUrl: string): string {
         Reset Your Password
       </h1>
       <p style="margin: 0 0 24px; font-size: 15px; color: #6B6661; line-height: 1.6;">
-        We received a request to reset the password for your Restocked.now account. Click the button below to set a new password.
+        We received a request to reset the password for your Covet account. Click the button below to set a new password.
       </p>
       <a href="${resetUrl}" style="display: inline-block; padding: 14px 28px; background: #2D2926; color: white; text-decoration: none; font-size: 12px; letter-spacing: 0.15em; text-transform: uppercase; font-weight: 500;">
         Reset Password
@@ -147,7 +147,7 @@ function getResetEmailHtml(resetUrl: string): string {
     </div>
     <div style="padding: 16px 32px; background: #FAF9F6; border-top: 1px solid #E8E2D9;">
       <p style="margin: 0; font-size: 11px; color: #9ca3af; letter-spacing: 0.1em; text-transform: uppercase;">
-        Restocked.now
+        Covet
       </p>
     </div>
   </div>

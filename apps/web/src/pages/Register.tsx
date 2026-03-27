@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { register as registerApi, googleAuth } from '../api/auth';
 import { ApiError } from '../api/client';
 import { GoogleSignInButton } from '../components/GoogleSignInButton';
+import { SEO } from '../components/SEO';
 
 export function Register() {
   const navigate = useNavigate();
@@ -67,6 +68,12 @@ export function Register() {
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4">
+      <SEO
+        title="Create Account"
+        description="Create a free Covet account. Track up to 3 items and get notified when they restock."
+        path="/register"
+        noindex
+      />
       <div className="max-w-[440px] w-full">
         {/* Header */}
         <div className="text-center mb-12">

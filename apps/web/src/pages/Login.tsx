@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { login as loginApi, googleAuth } from '../api/auth';
 import { ApiError } from '../api/client';
 import { GoogleSignInButton } from '../components/GoogleSignInButton';
+import { SEO } from '../components/SEO';
 
 export function Login() {
   const navigate = useNavigate();
@@ -54,6 +55,12 @@ export function Login() {
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4">
+      <SEO
+        title="Sign In"
+        description="Sign in to your Covet account to manage your tracked items and alerts."
+        path="/login"
+        noindex
+      />
       <div className="max-w-[440px] w-full">
         {/* Header */}
         <div className="text-center mb-12">

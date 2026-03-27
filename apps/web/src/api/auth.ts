@@ -1,5 +1,5 @@
 import { apiRequest } from './client';
-import type { AuthResponse } from '@restocked/shared';
+import type { AuthResponse } from '@covet/shared';
 
 export async function register(
   email: string,

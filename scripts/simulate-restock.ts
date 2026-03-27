@@ -23,7 +23,7 @@ import {
   and,
   desc,
   isNull,
-} from '@restocked/db';
+} from '@covet/db';
 import { getNotificationType, type ProductToCheck } from '../apps/worker/src/jobs/stockChecker.js';
 
 // ── Helpers ────────────────────────────────────────────────────────────────

@@ -4,7 +4,7 @@ import type {
   ItemDetailResponse,
   StockCheckRecord,
   NotificationRecord,
-} from '@restocked/shared';
+} from '@covet/shared';
 
 export async function getTrackedItems(
   token: string
@@ -18,8 +18,8 @@ export async function addTrackedItem(
   token: string,
   url: string,
   targetPrice?: number
-): Promise<{ item: unknown }> {
-  return apiRequest<{ item: unknown }>('/tracking', {
+): Promise<ItemDetailResponse> {
+  return apiRequest<ItemDetailResponse>('/tracking', {
     method: 'POST',
     token,
     body: { url, targetPrice },

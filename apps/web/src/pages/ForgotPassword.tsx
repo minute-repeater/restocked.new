@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { forgotPassword } from '../api/auth';
+import { SEO } from '../components/SEO';
 
 export function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -23,6 +24,12 @@ export function ForgotPassword() {
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4">
+      <SEO
+        title="Forgot Password"
+        description="Reset your Covet password."
+        path="/forgot-password"
+        noindex
+      />
       <div className="max-w-[440px] w-full">
         {/* Header */}
         <div className="text-center mb-12">

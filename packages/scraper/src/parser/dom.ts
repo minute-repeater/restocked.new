@@ -1,5 +1,5 @@
 import * as cheerio from 'cheerio';
-import type { ExtractedProductData } from '@restocked/shared';
+import type { ExtractedProductData } from '@covet/shared';
 
 /**
  * Extracts product data by analyzing DOM elements.
@@ -14,8 +14,12 @@ export function extractFromDom(html: string): Partial<ExtractedProductData> | nu
     'h1[itemprop="name"]',
     '[data-testid="product-title"]',
     '[data-testid="productTitle"]',
+    '[data-test="product-name"]',
+    '[data-component="ProductName"]',
     '.product-title',
     '.product-name',
+    '.product-detail__name',
+    '.product-info__name',
     '.pdp-title',
     '#productTitle', // Amazon
     'h1.product-title',
@@ -23,11 +27,14 @@ export function extractFromDom(html: string): Partial<ExtractedProductData> | nu
     '[class*="ProductTitle"]',
     '[class*="product-title"]',
     '[class*="productName"]',
+    '[class*="ProductName"]',
     // Shopify-specific selectors
     '.product-single__title',
     '.product__title',
     '[data-product-title]',
     '.product-meta__title',
+    // Fallback — any h1 with data-testid
+    'h1[data-testid]',
     'h1',
   ];
 
@@ -45,11 +52,13 @@ export function extractFromDom(html: string): Partial<ExtractedProductData> | nu
     'img[itemprop="image"]',
     '[data-testid="product-image"] img',
     '.product-image img',
+    '.product-detail__image img',
     '.pdp-image img',
     '#landingImage', // Amazon
     '.primary-image img',
     '[class*="ProductImage"] img',
     '[class*="product-image"] img',
+    '[class*="ProductGallery"] img',
     // Shopify-specific selectors
     '.product-single__photo img',
     '.product__image img',
@@ -71,14 +80,19 @@ export function extractFromDom(html: string): Partial<ExtractedProductData> | nu
   const priceSelectors = [
     '[itemprop="price"]',
     '[data-testid="product-price"]',
+    '[data-test="product-price"]',
     '.product-price',
     '.price-current',
     '.sale-price',
+    '.price-sales',
+    '.product-price__amount',
     '#priceblock_ourprice', // Amazon
     '#priceblock_dealprice',
     '.a-price .a-offscreen', // Amazon new
-    '[class*="Price"]',
-    '[class*="price"]',
+    'span[data-price]',
+    '.price--current',
+    '.price--sale',
+    '[class*="Price"]:not([class*="compare"]):not([class*="Compare"]):not([class*="was"]):not([class*="Was"])',
     // Shopify-specific selectors
     '.product__price',
     '.product-single__price',
@@ -110,6 +124,11 @@ export function extractFromDom(html: string): Partial<ExtractedProductData> | nu
     }
   }
 
+  // ===== CURRENCY DETECTION =====
+  if (result.price !== undefined && !result.currency) {
+    result.currency = detectCurrency($);
+  }
+
   // ===== STOCK STATUS =====
   result.inStock = determineStockStatus($);
 
@@ -122,12 +141,43 @@ export function extractFromDom(html: string): Partial<ExtractedProductData> | nu
 }
 
 /**
- * Determines stock status by analyzing various DOM indicators.
+ * Gets the product context scope — restricts text searches to the product
+ * detail area to avoid false positives from footer/sidebar/nav text.
+ */
+function getProductScope($: cheerio.CheerioAPI) {
+  const productContainerSelectors = [
+    '[itemscope][itemtype*="Product"]',
+    '[data-testid="product-detail"]',
+    '[data-component="ProductDetail"]',
+    '.product-detail',
+    '.product-info',
+    '.pdp',
+    '.product-page',
+    'main [class*="product"]',
+    'main [class*="Product"]',
+    'main',
+  ];
+
+  for (const selector of productContainerSelectors) {
+    const container = $(selector).first();
+    if (container.length > 0 && container.text().trim().length > 50) {
+      return container;
+    }
+  }
+
+  // Fallback to body if no product container found
+  return $('body');
+}
+
+/**
+ * Determines stock status by analyzing DOM indicators.
+ * Scopes text searches to product area to avoid false positives.
  */
 function determineStockStatus($: cheerio.CheerioAPI): boolean | null {
-  const pageText = $('body').text().toLowerCase();
+  const scope = getProductScope($);
+  const scopeText = scope.text().toLowerCase();
 
-  // ===== OUT OF STOCK INDICATORS =====
+  // ===== OUT OF STOCK INDICATORS (text-based) =====
   const outOfStockIndicators = [
     'out of stock',
     'sold out',
@@ -135,52 +185,52 @@ function determineStockStatus($: cheerio.CheerioAPI): boolean | null {
     'not available',
     'no longer available',
     'out-of-stock',
-    'oos',
     'notify me when available',
     'email when in stock',
     'back in stock notification',
-    'waitlist',
     'coming soon',
   ];
 
   for (const indicator of outOfStockIndicators) {
-    if (pageText.includes(indicator)) {
+    if (scopeText.includes(indicator)) {
       // Verify it's not negated (e.g., "not out of stock")
-      const index = pageText.indexOf(indicator);
-      const before = pageText.slice(Math.max(0, index - 10), index);
+      const index = scopeText.indexOf(indicator);
+      const before = scopeText.slice(Math.max(0, index - 10), index);
       if (!before.includes('not ') && !before.includes("n't ")) {
         return false;
       }
     }
   }
 
-  // ===== IN STOCK INDICATORS =====
+  // ===== IN STOCK INDICATORS (text-based) =====
   const inStockIndicators = [
     'in stock',
     'add to cart',
     'add to bag',
     'add to basket',
     'buy now',
-    'available',
     'ships from',
     'ready to ship',
     'in-stock',
   ];
 
   for (const indicator of inStockIndicators) {
-    if (pageText.includes(indicator)) {
+    if (scopeText.includes(indicator)) {
       return true;
     }
   }
 
-  // Check for add to cart button being enabled
+  // ===== CHECK ADD-TO-CART BUTTONS =====
   const addToCartSelectors = [
     'button[data-testid="add-to-cart"]',
     '#add-to-cart-button',
     '.add-to-cart',
     '[class*="AddToCart"]',
+    '[class*="addToCart"]',
+    '[class*="add-to-cart"]',
     'button:contains("Add to Cart")',
     'button:contains("Add to Bag")',
+    'button:contains("Add to Basket")',
     // Shopify-specific selectors
     '.product-form__cart-submit',
     '.product-form__submit',
@@ -197,7 +247,7 @@ function determineStockStatus($: cheerio.CheerioAPI): boolean | null {
       const buttonText = button.text().toLowerCase();
 
       // Check if button says "sold out" or similar
-      if (buttonText.includes('sold out') || buttonText.includes('unavailable')) {
+      if (buttonText.includes('sold out') || buttonText.includes('unavailable') || buttonText.includes('notify')) {
         return false;
       }
 
@@ -208,6 +258,36 @@ function determineStockStatus($: cheerio.CheerioAPI): boolean | null {
   }
 
   // Couldn't determine
+  return null;
+}
+
+/**
+ * Detect currency from price symbols or page metadata.
+ */
+function detectCurrency($: cheerio.CheerioAPI): string | null {
+  // Check itemprop priceCurrency
+  const currencyMeta = $('[itemprop="priceCurrency"]').first();
+  if (currencyMeta.length > 0) {
+    const content = currencyMeta.attr('content');
+    if (content) return content.toUpperCase();
+  }
+
+  // Check meta tags
+  const ogCurrency = $('meta[property="product:price:currency"]').attr('content');
+  if (ogCurrency) return ogCurrency.toUpperCase();
+
+  // Detect from first price-like text on page
+  const priceElements = $('[itemprop="price"], .product-price, .price, .money, [class*="price"], [class*="Price"]');
+  for (const el of priceElements) {
+    const text = $(el).text().trim();
+    if (text.includes('£')) return 'GBP';
+    if (text.includes('€')) return 'EUR';
+    if (text.includes('$') && !text.includes('CA$') && !text.includes('AU$')) return 'USD';
+    if (text.includes('CA$') || text.includes('C$')) return 'CAD';
+    if (text.includes('AU$') || text.includes('A$')) return 'AUD';
+    if (text.includes('¥')) return 'JPY';
+  }
+
   return null;
 }
 

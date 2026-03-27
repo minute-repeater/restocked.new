@@ -1,5 +1,5 @@
 {
-  "name": "@restocked/db",
+  "name": "@covet/db",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -24,7 +24,7 @@
   "dependencies": {
     "drizzle-orm": "^0.29.3",
     "postgres": "^3.4.3",
-    "@restocked/shared": "workspace:*"
+    "@covet/shared": "workspace:*"
   },
   "devDependencies": {
     "drizzle-kit": "^0.20.13",

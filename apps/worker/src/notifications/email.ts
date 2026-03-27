@@ -1,7 +1,7 @@
 import { Resend } from 'resend';
-import { createLogger } from '@restocked/shared/logger';
+import { createLogger } from '@covet/shared/logger';
 import { config } from '../config.js';
-import type { NotificationPayload } from '@restocked/shared';
+import type { NotificationPayload } from '@covet/shared';
 
 const log = createLogger('worker:email');
 
@@ -16,6 +16,8 @@ function escapeHtml(str: string): string {
     .replace(/'/g, '&#039;');
 }
 
+const MAX_EMAIL_RETRIES = 2;
+
 export async function sendEmailNotification(
   to: string,
   payload: NotificationPayload
@@ -23,24 +25,47 @@ export async function sendEmailNotification(
   const subject = getSubject(payload);
   const html = getHtmlContent(payload);
 
-  try {
-    const { error } = await resend.emails.send({
-      from: config.fromEmail,
-      to,
-      subject,
-      html,
-    });
+  for (let attempt = 0; attempt <= MAX_EMAIL_RETRIES; attempt++) {
+    try {
+      const { error } = await resend.emails.send({
+        from: config.fromEmail,
+        to,
+        subject,
+        html,
+      });
 
-    if (error) {
-      log.error({ err: error, to }, 'Failed to send email');
+      if (error) {
+        // Resend API errors (rate limit, invalid email, etc.)
+        log.error({ err: error, to, attempt }, 'Failed to send email');
+
+        // Don't retry on client errors (400-level) — only on server/rate limit errors
+        const status = (error as { statusCode?: number }).statusCode;
+        if (status && status >= 400 && status < 500 && status !== 429) {
+          return false;
+        }
+
+        if (attempt < MAX_EMAIL_RETRIES) {
+          const delay = Math.pow(2, attempt) * 1000; // 1s, 2s
+          await new Promise(r => setTimeout(r, delay));
+          continue;
+        }
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      log.error({ err: error, to, attempt }, 'Email send error');
+
+      if (attempt < MAX_EMAIL_RETRIES) {
+        const delay = Math.pow(2, attempt) * 1000;
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
       return false;
     }
-
-    return true;
-  } catch (error) {
-    log.error({ err: error, to }, 'Email send error');
-    return false;
   }
+
+  return false;
 }
 
 function getSubject(payload: NotificationPayload): string {
@@ -90,7 +115,7 @@ function getHtmlContent(payload: NotificationPayload): string {
 
     <div style="padding: 16px 24px; background: #f9fafb; border-top: 1px solid #e5e7eb;">
       <p style="margin: 0; font-size: 12px; color: #9ca3af;">
-        You're receiving this because you're tracking this product on Restocked.now
+        You're receiving this because you're tracking this product on Covet
       </p>
     </div>
   </div>

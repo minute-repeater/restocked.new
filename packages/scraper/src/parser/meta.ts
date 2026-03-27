@@ -1,5 +1,5 @@
 import * as cheerio from 'cheerio';
-import type { ExtractedProductData } from '@restocked/shared';
+import type { ExtractedProductData } from '@covet/shared';
 
 /**
  * Extracts product data from Open Graph and other meta tags.

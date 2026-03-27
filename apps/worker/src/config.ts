@@ -4,7 +4,7 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   DATABASE_URL: z.string(),
   RESEND_API_KEY: z.string(),
-  FROM_EMAIL: z.string().email().default('alerts@restocked.now'),
+  FROM_EMAIL: z.string().email().default('alerts@covet.deals'),
 });
 
 function loadConfig() {

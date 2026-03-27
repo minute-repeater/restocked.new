@@ -1,5 +1,5 @@
 {
-  "name": "@restocked/worker",
+  "name": "@covet/worker",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -11,9 +11,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@restocked/db": "workspace:*",
-    "@restocked/scraper": "workspace:*",
-    "@restocked/shared": "workspace:*",
+    "@covet/db": "workspace:*",
+    "@covet/scraper": "workspace:*",
+    "@covet/shared": "workspace:*",
     "express": "^4.18.2",
     "node-cron": "^3.0.3",
     "resend": "^3.1.0",

@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
-import { createLogger } from '@restocked/shared/logger';
+import { createLogger } from '@covet/shared/logger';
 import { config } from '../config.js';
 
 const log = createLogger('api:error');

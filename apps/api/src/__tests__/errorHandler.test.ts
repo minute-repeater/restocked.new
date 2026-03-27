@@ -14,7 +14,7 @@ vi.mock('../config.js', () => ({
 }));
 
 // Mock logger
-vi.mock('@restocked/shared/logger', () => ({
+vi.mock('@covet/shared/logger', () => ({
   createLogger: () => ({
     info: vi.fn(),
     warn: vi.fn(),

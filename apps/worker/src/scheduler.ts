@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import express from 'express';
-import { createLogger } from '@restocked/shared/logger';
+import { createLogger } from '@covet/shared/logger';
 import { runStockCheck } from './jobs/stockChecker.js';
 import { config } from './config.js';
 

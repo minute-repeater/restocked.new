@@ -27,3 +27,10 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
 export function getPlanLimits(plan: PlanTier): PlanLimits {
   return PLAN_LIMITS[plan];
 }
+
+/** DB plan tier → user-facing display name */
+export const PLAN_DISPLAY_NAMES: Record<PlanTier, string> = {
+  free: 'Free',
+  basic: 'Premium',
+  premium: 'Business',
+};

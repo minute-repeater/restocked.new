@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, timestamp, boolean, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, timestamp, boolean, pgEnum, index } from 'drizzle-orm/pg-core';
 
 export const planTierEnum = pgEnum('plan_tier', ['free', 'basic', 'premium']);
 
@@ -11,9 +11,16 @@ export const users = pgTable('users', {
   emailVerificationToken: varchar('email_verification_token', { length: 255 }),
   authProvider: varchar('auth_provider', { length: 50 }).notNull().default('email'),
   googleId: varchar('google_id', { length: 255 }).unique(),
+  // Stripe billing
+  stripeCustomerId: varchar('stripe_customer_id', { length: 255 }).unique(),
+  stripeSubscriptionId: varchar('stripe_subscription_id', { length: 255 }),
+  stripeCurrentPeriodEnd: timestamp('stripe_current_period_end', { withTimezone: true }),
+  stripeCancelAtPeriodEnd: boolean('stripe_cancel_at_period_end').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => ({
+  stripeCustomerIdIdx: index('users_stripe_customer_id_idx').on(table.stripeCustomerId),
+}));
 
 export const passwordResetTokens = pgTable('password_reset_tokens', {
   id: uuid('id').primaryKey().defaultRandom(),

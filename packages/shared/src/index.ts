@@ -11,4 +11,4 @@ export * from './constants/plans.js';
 export * from './utils/url.js';
 
 // NOTE: Logger is NOT exported here to avoid pulling pino into browser bundles.
-// Import from '@restocked/shared/logger' instead.
+// Import from '@covet/shared/logger' instead.

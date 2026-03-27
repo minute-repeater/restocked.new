@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { resetPassword } from '../api/auth';
 import { ApiError } from '../api/client';
+import { SEO } from '../components/SEO';
 
 export function ResetPassword() {
   const [searchParams] = useSearchParams();
@@ -70,6 +71,12 @@ export function ResetPassword() {
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4">
+      <SEO
+        title="Reset Password"
+        description="Set a new password for your Covet account."
+        path="/reset-password"
+        noindex
+      />
       <div className="max-w-[440px] w-full">
         <div className="text-center mb-12">
           <h1 className="font-display text-4xl md:text-5xl font-light text-text-main mb-4">

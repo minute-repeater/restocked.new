@@ -1,0 +1,11 @@
+{
+  "name": "Covet",
+  "short_name": "Covet",
+  "icons": [
+    { "src": "/favicon.svg", "type": "image/svg+xml", "sizes": "any" }
+  ],
+  "theme_color": "#FAF9F6",
+  "background_color": "#FAF9F6",
+  "display": "standalone",
+  "start_url": "/"
+}

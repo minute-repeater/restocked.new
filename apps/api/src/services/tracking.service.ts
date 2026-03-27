@@ -11,17 +11,19 @@ import {
   desc,
   isNull,
   sql,
-} from '@restocked/db';
-import { normalizeProductUrl, extractRetailer, getPlanLimits } from '@restocked/shared';
+} from '@covet/db';
+import { normalizeProductUrl, extractRetailer, getPlanLimits } from '@covet/shared';
 import type {
   TrackedItemWithDetails,
   ItemDetailResponse,
   StockCheckRecord,
   NotificationRecord,
   VariantInfo,
-} from '@restocked/shared';
-import { extractProductData } from '@restocked/scraper';
+} from '@covet/shared';
+import { extractProductData, closeBrowser } from '@covet/scraper';
 import { AppError } from '../middleware/errorHandler.js';
+
+const SCRAPER_TIMEOUT_MS = 15000;
 
 export async function addTrackedItem(
   userId: string,
@@ -66,7 +68,13 @@ export async function addTrackedItem(
   // If not, create it and fetch initial data
   if (!product) {
     try {
-      const { data: extractedData } = await extractProductData(url);
+      // Wrap scraper with timeout to prevent hanging API requests
+      const { data: extractedData } = await Promise.race([
+        extractProductData(url),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Scraper timeout')), SCRAPER_TIMEOUT_MS)
+        ),
+      ]);
 
       [product] = await db
         .insert(products)
@@ -90,7 +98,10 @@ export async function addTrackedItem(
         });
       }
     } catch (error) {
-      // If extraction fails, still create the product with minimal data
+      // If extraction fails or times out, still create the product with minimal data
+      // Close browser to release resources on timeout
+      await closeBrowser().catch(() => {});
+
       [product] = await db
         .insert(products)
         .values({
@@ -145,55 +156,91 @@ export async function addTrackedItem(
 }
 
 export async function getTrackedItems(userId: string): Promise<TrackedItemWithDetails[]> {
-  // Get all active tracked items for user with product and latest check data
-  const items = await db.query.trackedItems.findMany({
-    where: and(eq(trackedItems.userId, userId), eq(trackedItems.isActive, true)),
-    with: {
-      // Note: We'll need to add relations to the schema for this to work
-      // For now, we'll do separate queries
-    },
-    orderBy: desc(trackedItems.createdAt),
-  });
+  // Get all active tracked items with product data in a single query
+  const items = await db
+    .select({
+      id: trackedItems.id,
+      userId: trackedItems.userId,
+      productId: trackedItems.productId,
+      variantId: trackedItems.variantId,
+      targetPrice: trackedItems.targetPrice,
+      isActive: trackedItems.isActive,
+      createdAt: trackedItems.createdAt,
+      productDbId: products.id,
+      productUrl: products.url,
+      productName: products.name,
+      productImageUrl: products.imageUrl,
+      productRetailer: products.retailer,
+    })
+    .from(trackedItems)
+    .innerJoin(products, eq(trackedItems.productId, products.id))
+    .where(and(eq(trackedItems.userId, userId), eq(trackedItems.isActive, true)))
+    .orderBy(desc(trackedItems.createdAt));
 
-  // Fetch product data and latest checks for each item
-  const result: TrackedItemWithDetails[] = [];
+  if (items.length === 0) return [];
 
-  for (const item of items) {
-    const product = await db.query.products.findFirst({
-      where: eq(products.id, item.productId),
-    });
+  // Batch-fetch latest stock checks using a lateral join approach
+  // For each tracked item, get the latest stock check in one query
+  const productIds = [...new Set(items.map(i => i.productId))];
+  const latestChecks = await db
+    .select({
+      productId: stockChecks.productId,
+      variantId: stockChecks.variantId,
+      inStock: stockChecks.inStock,
+      price: stockChecks.price,
+      checkedAt: stockChecks.checkedAt,
+    })
+    .from(stockChecks)
+    .where(
+      sql`${stockChecks.productId} IN (${sql.join(productIds.map(id => sql`${id}`), sql`, `)})
+        AND ${stockChecks.id} = (
+          SELECT sc2.id FROM ${stockChecks} sc2
+          WHERE sc2.product_id = ${stockChecks.productId}
+            AND (sc2.variant_id IS NOT DISTINCT FROM ${stockChecks.variantId})
+          ORDER BY sc2.checked_at DESC
+          LIMIT 1
+        )`
+    );
 
-    if (!product) continue;
+  // Build a lookup map: "productId:variantId" -> latest check
+  const checkMap = new Map<string, typeof latestChecks[0]>();
+  for (const check of latestChecks) {
+    const key = `${check.productId}:${check.variantId ?? 'null'}`;
+    checkMap.set(key, check);
+  }
 
-    // Get latest stock check
-    const [latestCheck] = await db
-      .select()
-      .from(stockChecks)
-      .where(
-        and(
-          eq(stockChecks.productId, item.productId),
-          item.variantId
-            ? eq(stockChecks.variantId, item.variantId)
-            : isNull(stockChecks.variantId)
-        )
-      )
-      .orderBy(desc(stockChecks.checkedAt))
-      .limit(1);
+  // Batch-fetch variants for items that have a variantId
+  const variantIds = [...new Set(items.map(i => i.variantId).filter((id): id is string => id != null))];
+  const variantMap = new Map<string, { id: string; name: string | null; sku: string | null }>();
+  if (variantIds.length > 0) {
+    const variantRows = await db
+      .select({ id: variants.id, name: variants.name, sku: variants.sku })
+      .from(variants)
+      .where(sql`${variants.id} IN (${sql.join(variantIds.map(id => sql`${id}`), sql`, `)})`);
+    for (const v of variantRows) {
+      variantMap.set(v.id, v);
+    }
+  }
 
-    result.push({
+  return items.map(item => {
+    const checkKey = `${item.productId}:${item.variantId ?? 'null'}`;
+    const latestCheck = checkMap.get(checkKey);
+    const variant = item.variantId ? variantMap.get(item.variantId) ?? null : null;
+
+    return {
       id: item.id,
       userId: item.userId,
       targetPrice: item.targetPrice,
       isActive: item.isActive,
       createdAt: item.createdAt,
       product: {
-        id: product.id,
-        url: product.url,
-        name: product.name,
-        imageUrl: product.imageUrl,
-        retailer: product.retailer,
+        id: item.productDbId,
+        url: item.productUrl,
+        name: item.productName,
+        imageUrl: item.productImageUrl,
+        retailer: item.productRetailer,
       },
-      variant: null, // TODO: fetch variant if variantId exists
+      variant: variant ? { id: variant.id, name: variant.name ?? 'Unknown' } : null,
       latestCheck: latestCheck
         ? {
             inStock: latestCheck.inStock,
@@ -201,10 +248,8 @@ export async function getTrackedItems(userId: string): Promise<TrackedItemWithDe
             checkedAt: latestCheck.checkedAt,
           }
         : null,
-    });
-  }
-
-  return result;
+    };
+  });
 }
 
 export async function updateTrackedItem(

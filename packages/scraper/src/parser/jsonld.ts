@@ -1,21 +1,25 @@
 import * as cheerio from 'cheerio';
-import type { ExtractedProductData } from '@restocked/shared';
+import type { ExtractedProductData } from '@covet/shared';
 
 interface JsonLdProduct {
   '@type'?: string;
   name?: string;
-  image?: string | string[] | { url?: string };
+  image?: string | string[] | { url?: string } | Array<{ url?: string }>;
   offers?: JsonLdOffer | JsonLdOffer[];
   sku?: string;
+  mainEntity?: Record<string, unknown>;
 }
 
 interface JsonLdOffer {
   '@type'?: string;
   price?: number | string;
+  lowPrice?: number | string;
+  highPrice?: number | string;
   priceCurrency?: string;
   availability?: string;
   sku?: string;
   name?: string;
+  offers?: JsonLdOffer | JsonLdOffer[];
 }
 
 /**
@@ -40,43 +44,23 @@ export function extractFromJsonLd(html: string): Partial<ExtractedProductData> |
       const items = data['@graph'] || [data];
 
       for (const item of items) {
+        // Check for Product directly
         if (isProductType(item)) {
-          const product = item as JsonLdProduct;
+          extractProductFields(item as JsonLdProduct, result);
+        }
 
-          // Name
-          if (product.name && !result.name) {
-            result.name = product.name;
+        // Check for WebPage.mainEntity → Product (Net-a-Porter, Mytheresa pattern)
+        if (typeof item === 'object' && item !== null) {
+          const entity = (item as Record<string, unknown>).mainEntity;
+          if (entity && isProductType(entity)) {
+            extractProductFields(entity as JsonLdProduct, result);
           }
+        }
 
-          // Image
-          if (product.image && !result.imageUrl) {
-            result.imageUrl = extractImageUrl(product.image);
-          }
-
-          // Offers (price and availability)
-          if (product.offers) {
-            const offers = Array.isArray(product.offers) ? product.offers : [product.offers];
-
-            for (const offer of offers) {
-              if (offer.price !== undefined && result.price === undefined) {
-                result.price = parsePrice(offer.price);
-              }
-
-              if (offer.priceCurrency && !result.currency) {
-                result.currency = offer.priceCurrency;
-              }
-
-              if (offer.availability !== undefined && result.inStock === undefined) {
-                result.inStock = parseAvailability(offer.availability);
-              }
-            }
-          }
-
-          // If we found a product with good data, return early
-          if (result.name && result.inStock !== undefined) {
-            result.confidence = 0.9; // High confidence for JSON-LD
-            return result;
-          }
+        // If we found a product with good data, return early
+        if (result.name && result.inStock !== undefined) {
+          result.confidence = 0.9;
+          return result;
         }
       }
     } catch (e) {
@@ -91,6 +75,72 @@ export function extractFromJsonLd(html: string): Partial<ExtractedProductData> |
   }
 
   return null;
+}
+
+/**
+ * Extract all product fields from a JSON-LD Product item into the result.
+ */
+function extractProductFields(product: JsonLdProduct, result: Partial<ExtractedProductData>): void {
+  // Name
+  if (product.name && !result.name) {
+    result.name = product.name;
+  }
+
+  // Image
+  if (product.image && !result.imageUrl) {
+    result.imageUrl = extractImageUrl(product.image);
+  }
+
+  // Offers (price and availability)
+  if (product.offers) {
+    extractOffersData(product.offers, result);
+  }
+}
+
+/**
+ * Recursively extract price/currency/availability from offers.
+ * Handles Offer, AggregateOffer, and nested offers.
+ */
+function extractOffersData(
+  offers: JsonLdOffer | JsonLdOffer[],
+  result: Partial<ExtractedProductData>
+): void {
+  const offerList = Array.isArray(offers) ? offers : [offers];
+
+  for (const offer of offerList) {
+    const offerType = offer['@type'];
+
+    // Handle AggregateOffer — use lowPrice
+    if (offerType === 'AggregateOffer') {
+      if (offer.lowPrice !== undefined && result.price === undefined) {
+        result.price = parsePrice(offer.lowPrice);
+      }
+      if (offer.priceCurrency && !result.currency) {
+        result.currency = offer.priceCurrency;
+      }
+      if (offer.availability !== undefined && result.inStock === undefined) {
+        result.inStock = parseAvailability(offer.availability);
+      }
+      // AggregateOffer can contain nested offers
+      if (offer.offers) {
+        extractOffersData(offer.offers, result);
+      }
+      continue;
+    }
+
+    // Standard Offer
+    if (offer.price !== undefined && result.price === undefined) {
+      result.price = parsePrice(offer.price);
+    }
+
+    if (offer.priceCurrency && !result.currency) {
+      result.currency = offer.priceCurrency;
+    }
+
+    if (offer.availability !== undefined && result.inStock === undefined) {
+      result.inStock = parseAvailability(offer.availability);
+    }
+  }
 }
 
 function isProductType(item: unknown): boolean {
@@ -109,13 +159,16 @@ function isProductType(item: unknown): boolean {
   return false;
 }
 
-function extractImageUrl(image: string | string[] | { url?: string }): string | null {
+function extractImageUrl(image: string | string[] | { url?: string } | Array<{ url?: string }>): string | null {
   if (typeof image === 'string') {
     return image;
   }
 
   if (Array.isArray(image) && image.length > 0) {
-    return typeof image[0] === 'string' ? image[0] : null;
+    const first = image[0];
+    if (typeof first === 'string') return first;
+    if (typeof first === 'object' && first !== null && first.url) return first.url;
+    return null;
   }
 
   if (typeof image === 'object' && !Array.isArray(image) && image.url) {

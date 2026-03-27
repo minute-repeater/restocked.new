@@ -10,19 +10,16 @@ export function Layout() {
         <div className="mx-auto flex max-w-[1280px] items-center justify-between px-8 py-6">
           <Link to="/" className="flex items-center gap-3">
             <span className="material-symbols-outlined text-champagne-gold text-2xl">auto_awesome</span>
-            <h2 className="text-xl font-medium tracking-tight font-display">Restocked.now</h2>
+            <h2 className="text-xl font-medium tracking-tight font-display">Covet</h2>
           </Link>
 
           <div className="hidden md:flex items-center gap-12">
-            <a href="#how-it-works" className="text-[10px] uppercase tracking-[0.2em] font-medium text-text-muted hover:text-champagne-gold transition-colors">
-              Process
-            </a>
-            <a href="#features" className="text-[10px] uppercase tracking-[0.2em] font-medium text-text-muted hover:text-champagne-gold transition-colors">
-              Curation
-            </a>
-            <a href="#pricing" className="text-[10px] uppercase tracking-[0.2em] font-medium text-text-muted hover:text-champagne-gold transition-colors">
-              Services
-            </a>
+            <Link to="/how-it-works" className="text-[10px] uppercase tracking-[0.2em] font-medium text-text-muted hover:text-champagne-gold transition-colors">
+              How It Works
+            </Link>
+            <Link to="/pricing" className="text-[10px] uppercase tracking-[0.2em] font-medium text-text-muted hover:text-champagne-gold transition-colors">
+              Pricing
+            </Link>
           </div>
 
           <div className="flex items-center gap-8">
@@ -70,24 +67,15 @@ export function Layout() {
           <div className="flex flex-col md:flex-row justify-between items-center gap-12">
             <Link to="/" className="flex items-center gap-3">
               <span className="material-symbols-outlined text-champagne-gold">auto_awesome</span>
-              <span className="text-lg font-display">Restocked.now</span>
+              <span className="text-lg font-display">Covet</span>
             </Link>
-            <div className="flex gap-12 text-[10px] uppercase tracking-[0.25em] font-medium text-text-muted">
-              <a href="#" className="hover:text-champagne-gold transition-colors">Privacy</a>
-              <a href="#" className="hover:text-champagne-gold transition-colors">Terms</a>
-              <a href="#" className="hover:text-champagne-gold transition-colors">Concierge</a>
-            </div>
-            <div className="flex gap-8">
-              <a href="#" className="text-text-muted hover:text-champagne-gold transition-colors">
-                <span className="material-symbols-outlined text-xl">share</span>
-              </a>
-              <a href="#" className="text-text-muted hover:text-champagne-gold transition-colors">
-                <span className="material-symbols-outlined text-xl">mail</span>
-              </a>
+            <div className="flex gap-8 md:gap-12 text-[10px] uppercase tracking-[0.25em] font-medium text-text-muted flex-wrap justify-center">
+              <Link to="/how-it-works" className="hover:text-champagne-gold transition-colors">How It Works</Link>
+              <Link to="/pricing" className="hover:text-champagne-gold transition-colors">Pricing</Link>
             </div>
           </div>
           <div className="mt-20 pt-8 border-t border-cream text-center text-[10px] uppercase tracking-[0.25em] text-stone-300 font-light">
-            &copy; 2025 Restocked.now Boutique Services. Not affiliated with Shopify Inc.
+            &copy; 2026 Covet. Not affiliated with Shopify Inc.
           </div>
         </div>
       </footer>

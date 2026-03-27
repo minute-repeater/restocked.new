@@ -1,4 +1,4 @@
-import type { TrackedItemWithDetails } from '@restocked/shared';
+import type { TrackedItemWithDetails } from '@covet/shared';
 import clsx from 'clsx';
 
 interface TrackedItemCardProps {

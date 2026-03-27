@@ -32,5 +32,8 @@ export interface AuthResponse {
   token: string;
   user: Omit<User, 'createdAt' | 'updatedAt'> & {
     createdAt: string;
+    hasSubscription?: boolean;
+    cancelAtPeriodEnd?: boolean;
+    currentPeriodEnd?: string | null;
   };
 }
