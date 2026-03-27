@@ -74,6 +74,6 @@ app.use('/settings', settingsRoutes);
 app.use(errorHandler);
 
 // Start server
-app.listen(config.port, () => {
+app.listen(config.port, '0.0.0.0', () => {
   log.info({ port: config.port, env: config.env }, 'API server started');
 });
