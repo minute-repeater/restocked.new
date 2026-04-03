@@ -1,16 +1,24 @@
-import { chromium, type Browser, type BrowserContext } from 'playwright';
+import { chromium } from 'playwright-extra';
+import type { Browser, BrowserContext } from 'playwright';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import { getRandomBrowserProfile } from './fingerprints.js';
+import { getProxyForPlaywright } from './proxy.js';
+import { scraperConfig } from './config.js';
 import type { FetchResult } from './http.js';
+
+// Apply stealth plugin — handles WebDriver flag, Chrome runtime,
+// navigator.plugins, WebGL vendor, canvas fingerprint, etc.
+chromium.use(StealthPlugin());
 
 let browser: Browser | null = null;
 let pageCount = 0;
-const BROWSER_MAX_PAGES = 100;
 
 /**
  * Gets or creates a shared browser instance.
- * Recycles after BROWSER_MAX_PAGES fetches to prevent memory leaks.
+ * Recycles after browserMaxPages fetches to prevent memory leaks.
  */
 async function getBrowser(): Promise<Browser> {
-  if (browser && pageCount >= BROWSER_MAX_PAGES) {
+  if (browser && pageCount >= scraperConfig.browserMaxPages) {
     await browser.close().catch(() => {});
     browser = null;
     pageCount = 0;
@@ -20,7 +28,6 @@ async function getBrowser(): Promise<Browser> {
     browser = await chromium.launch({
       headless: true,
       args: [
-        '--disable-blink-features=AutomationControlled',
         '--disable-dev-shm-usage',
         '--no-sandbox',
       ],
@@ -31,7 +38,7 @@ async function getBrowser(): Promise<Browser> {
 }
 
 /**
- * Fetches a page using Playwright browser.
+ * Fetches a page using Playwright browser with stealth plugin.
  * More expensive but handles JavaScript-heavy sites.
  */
 export async function fetchWithBrowser(url: string): Promise<FetchResult | null> {
@@ -41,12 +48,12 @@ export async function fetchWithBrowser(url: string): Promise<FetchResult | null>
     const browserInstance = await getBrowser();
     pageCount++;
 
+    const profile = getRandomBrowserProfile();
+    const proxyConfig = getProxyForPlaywright();
+
     context = await browserInstance.newContext({
-      userAgent:
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-      viewport: { width: 1280, height: 720 },
-      locale: 'en-US',
-      timezoneId: 'America/New_York',
+      ...profile,
+      ...(proxyConfig ? { proxy: proxyConfig } : {}),
     });
 
     const page = await context.newPage();
@@ -63,7 +70,7 @@ export async function fetchWithBrowser(url: string): Promise<FetchResult | null>
 
     const response = await page.goto(url, {
       waitUntil: 'domcontentloaded',
-      timeout: 30000,
+      timeout: scraperConfig.browserTimeoutMs,
     });
 
     if (!response) {

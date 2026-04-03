@@ -5,6 +5,13 @@ const envSchema = z.object({
   DATABASE_URL: z.string(),
   RESEND_API_KEY: z.string(),
   FROM_EMAIL: z.string().email().default('alerts@covet.deals'),
+  // Scraper anti-blocking config (read directly by @covet/scraper, validated here)
+  PROXY_URLS: z.string().optional(),
+  PROXY_FILE: z.string().optional(),
+  SCRAPE_DELAY_MIN_MS: z.coerce.number().positive().optional(),
+  SCRAPE_DELAY_MAX_MS: z.coerce.number().positive().optional(),
+  SCRAPE_BACKOFF_BASE_MS: z.coerce.number().positive().optional(),
+  SCRAPE_BACKOFF_MAX_MS: z.coerce.number().positive().optional(),
 });
 
 function loadConfig() {

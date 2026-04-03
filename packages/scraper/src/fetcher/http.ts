@@ -1,3 +1,7 @@
+import { getRandomHeaders } from './fingerprints.js';
+import { getProxyForHttp, markProxyFailed } from './proxy.js';
+import { scraperConfig } from './config.js';
+
 export interface FetchResult {
   html: string;
   finalUrl: string;
@@ -5,42 +9,37 @@ export interface FetchResult {
   usedBrowser: boolean;
 }
 
-const USER_AGENTS = [
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Safari/605.1.15',
-];
-
-function getRandomUserAgent(): string {
-  return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
-}
-
 /**
  * Attempts to fetch a page using simple HTTP.
  * Returns null if the page requires JavaScript rendering.
  */
 export async function fetchWithHttp(url: string): Promise<FetchResult | null> {
+  const proxyUrl = getProxyForHttp();
+
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
+    const timeout = setTimeout(() => controller.abort(), scraperConfig.httpTimeoutMs);
 
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': getRandomUserAgent(),
-        Accept:
-          'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Accept-Encoding': 'gzip, deflate, br',
-        Connection: 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
-        'Sec-Fetch-User': '?1',
-      },
+    const fetchOptions: RequestInit & { dispatcher?: unknown } = {
+      headers: getRandomHeaders(url),
       signal: controller.signal,
       redirect: 'follow',
-    });
+    };
+
+    // Use proxy if available (Node 18+ global fetch supports undici dispatcher)
+    let fetchFn = globalThis.fetch;
+    if (proxyUrl) {
+      try {
+        const { ProxyAgent, fetch: undiciFetch } = await import('undici');
+        const agent = new ProxyAgent(proxyUrl);
+        fetchFn = ((input: string | URL | Request, init?: RequestInit) =>
+          undiciFetch(input as string, { ...init, dispatcher: agent } as never)) as typeof fetch;
+      } catch {
+        // undici not available — fall back to direct fetch
+      }
+    }
+
+    const response = await fetchFn(url, fetchOptions);
 
     clearTimeout(timeout);
 
@@ -67,6 +66,10 @@ export async function fetchWithHttp(url: string): Promise<FetchResult | null> {
       usedBrowser: false,
     };
   } catch (error) {
+    // If using a proxy and we got a connection error, mark it as failed
+    if (proxyUrl) {
+      markProxyFailed(proxyUrl);
+    }
     // Network error or timeout - will try browser fallback
     return null;
   }

@@ -12,14 +12,13 @@ import {
   isNull,
   sql,
 } from '@covet/db';
-import { extractProductData, closeBrowser } from '@covet/scraper';
+import { extractProductData, closeBrowser, interRequestDelay } from '@covet/scraper';
 import { getPlanLimits, type NotificationPayload, type NotificationType } from '@covet/shared';
 import { createLogger } from '@covet/shared/logger';
 import { sendEmailNotification } from '../notifications/email.js';
 
 const log = createLogger('worker:stockChecker');
 
-const SCRAPE_RETRY_DELAY_MS = 5000;
 const MAX_CONSECUTIVE_FAILURES = 5;
 
 /**
@@ -52,15 +51,13 @@ export async function runStockCheck(): Promise<void> {
     const productsToCheck = await getProductsToCheck();
     log.info({ count: productsToCheck.length }, 'Found products to check');
 
-    // Process in batches to avoid overwhelming resources
-    const batchSize = 5;
-    for (let i = 0; i < productsToCheck.length; i += batchSize) {
-      const batch = productsToCheck.slice(i, i + batchSize);
-      await Promise.all(batch.map(checkProduct));
+    // Process sequentially with randomized delays to avoid detection patterns
+    for (let i = 0; i < productsToCheck.length; i++) {
+      await checkProduct(productsToCheck[i]);
 
-      // Small delay between batches
-      if (i + batchSize < productsToCheck.length) {
-        await sleep(2000);
+      // Random delay between requests (1–4s by default)
+      if (i < productsToCheck.length - 1) {
+        await interRequestDelay();
       }
     }
 
@@ -230,14 +227,14 @@ async function checkProduct(product: ProductToCheck): Promise<void> {
 }
 
 /**
- * Attempts to scrape a product URL, retrying once after a delay on failure.
+ * Attempts to scrape a product URL, retrying once on failure.
+ * Backoff delay is handled inside fetchPage via the backoff module.
  */
 async function scrapeWithRetry(url: string) {
   try {
     return await extractProductData(url);
   } catch (firstError) {
-    log.warn({ err: firstError, url }, 'Scrape failed, retrying after delay');
-    await sleep(SCRAPE_RETRY_DELAY_MS);
+    log.warn({ err: firstError, url }, 'Scrape failed, retrying');
     return await extractProductData(url);
   }
 }
@@ -326,8 +323,4 @@ async function sendNotification(
       })
       .where(eq(notifications.id, notification.id));
   }
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
