@@ -11,6 +11,7 @@ export const users = pgTable('users', {
   emailVerificationToken: varchar('email_verification_token', { length: 255 }),
   authProvider: varchar('auth_provider', { length: 50 }).notNull().default('email'),
   googleId: varchar('google_id', { length: 255 }).unique(),
+  isAdmin: boolean('is_admin').notNull().default(false),
   // Stripe billing
   stripeCustomerId: varchar('stripe_customer_id', { length: 255 }).unique(),
   stripeSubscriptionId: varchar('stripe_subscription_id', { length: 255 }),

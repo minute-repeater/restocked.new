@@ -18,6 +18,12 @@ import { Pricing } from './pages/Pricing';
 import { Billing } from './pages/Billing';
 import { CheckoutSuccess } from './pages/CheckoutSuccess';
 import { Settings } from './pages/Settings';
+import { SupportedRetailers } from './pages/SupportedRetailers';
+import { AdminLayout } from './components/AdminLayout';
+import { AdminOverview } from './pages/admin/AdminOverview';
+import { AdminUsers } from './pages/admin/AdminUsers';
+import { AdminProducts } from './pages/admin/AdminProducts';
+import { AdminHealth } from './pages/admin/AdminHealth';
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -41,10 +47,19 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               <Route path="/" element={<Home />} />
               <Route path="/how-it-works" element={<HowItWorks />} />
               <Route path="/pricing" element={<Pricing />} />
+              <Route path="/supported-retailers" element={<SupportedRetailers />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+            </Route>
+
+            {/* Admin dashboard (secret route, requires isAdmin flag) */}
+            <Route element={<AdminLayout />}>
+              <Route path="/admin" element={<AdminOverview />} />
+              <Route path="/admin/users" element={<AdminUsers />} />
+              <Route path="/admin/products" element={<AdminProducts />} />
+              <Route path="/admin/health" element={<AdminHealth />} />
             </Route>
 
             {/* Dashboard with sidebar layout */}

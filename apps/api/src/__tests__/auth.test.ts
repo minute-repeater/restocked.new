@@ -13,6 +13,13 @@ vi.mock('../config.js', () => ({
   },
 }));
 
+// Mock DB (required by requireAdmin middleware)
+vi.mock('@covet/db', () => ({
+  db: { query: { users: { findFirst: vi.fn() } } },
+  users: {},
+  eq: vi.fn(),
+}));
+
 import { authenticate, generateToken } from '../middleware/auth.js';
 
 describe('generateToken', () => {

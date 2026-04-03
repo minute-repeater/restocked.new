@@ -10,6 +10,7 @@ import trackingRoutes from './routes/tracking.routes.js';
 import billingRoutes from './routes/billing.routes.js';
 import webhookRoutes from './routes/webhook.routes.js';
 import settingsRoutes from './routes/settings.routes.js';
+import adminRoutes from './routes/admin.routes.js';
 
 const log = createLogger('api');
 const app = express();
@@ -69,6 +70,7 @@ app.use('/auth', authRoutes);
 app.use('/tracking', trackingRoutes);
 app.use('/billing', billingRoutes);
 app.use('/settings', settingsRoutes);
+app.use('/admin', adminRoutes);
 
 // Error handling
 app.use(errorHandler);

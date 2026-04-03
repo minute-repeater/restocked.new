@@ -72,6 +72,7 @@ router.get('/me', authenticate, async (req, res, next) => {
         id: user.id,
         email: user.email,
         plan: user.plan,
+        isAdmin: user.isAdmin || false,
         createdAt: user.createdAt.toISOString(),
         hasSubscription: user.hasSubscription,
         cancelAtPeriodEnd: user.cancelAtPeriodEnd,

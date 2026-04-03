@@ -194,6 +194,7 @@ export async function getUserById(userId: string) {
     id: user.id,
     email: user.email,
     plan: user.plan,
+    isAdmin: user.isAdmin,
     createdAt: user.createdAt,
     hasSubscription: !!user.stripeSubscriptionId,
     cancelAtPeriodEnd: user.stripeCancelAtPeriodEnd,
