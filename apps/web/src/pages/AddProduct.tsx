@@ -1,8 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { addTrackedItem } from '../api/tracking';
+import { addTrackedItem, previewProduct, type ProductPreview } from '../api/tracking';
+
+function formatPrice(cents: number, currency: string | null) {
+  const value = cents / 100;
+  const cur = currency || 'USD';
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur }).format(value);
+  } catch {
+    return `$${value.toFixed(2)}`;
+  }
+}
+
+function isValidUrl(str: string) {
+  try {
+    const u = new URL(str);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
 
 export function AddProduct() {
   const { token, user, isLoading: authLoading } = useAuth();
@@ -13,6 +32,35 @@ export function AddProduct() {
   const [targetPrice, setTargetPrice] = useState('');
   const [stockNotification, setStockNotification] = useState(true);
   const [error, setError] = useState('');
+  const [preview, setPreview] = useState<ProductPreview | null>(null);
+  const previewUrlRef = useRef('');
+
+  // Debounced preview fetch
+  const previewMutation = useMutation({
+    mutationFn: ({ url }: { url: string }) => previewProduct(token!, url),
+    onSuccess: (data, variables) => {
+      if (variables.url === previewUrlRef.current) {
+        setPreview(data);
+      }
+    },
+  });
+
+  useEffect(() => {
+    const trimmed = url.trim();
+    if (!trimmed || !isValidUrl(trimmed)) {
+      setPreview(null);
+      previewUrlRef.current = '';
+      return;
+    }
+
+    previewUrlRef.current = trimmed;
+    const timer = setTimeout(() => {
+      previewMutation.mutate({ url: trimmed });
+    }, 500);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url, token]);
 
   const addMutation = useMutation({
     mutationFn: ({ url, targetPrice }: { url: string; targetPrice?: number }) =>
@@ -55,6 +103,9 @@ export function AddProduct() {
   }
 
   const isSubmitting = addMutation.isPending;
+  const isPreviewing = previewMutation.isPending;
+  const previewFailed = previewMutation.isError && !preview;
+  const hasUrl = url.trim().length > 0;
 
   return (
     <div className="flex flex-1 justify-center items-start pt-8 pb-24 px-6">
@@ -86,27 +137,90 @@ export function AddProduct() {
           </div>
 
           {/* Product Card (shown when URL entered) */}
-          {url.trim() && (
+          {hasUrl && (
             <div className="bg-white rounded-[2rem] p-8 md:p-10 shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-stone-100 flex flex-col gap-10">
               {/* Product Preview */}
               <div className="grid md:grid-cols-[200px_1fr] gap-10 items-start">
+                {/* Image */}
                 <div className="aspect-[4/5] bg-stone-50 rounded-2xl overflow-hidden shadow-inner border border-stone-100 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-soft-gold !text-5xl">inventory_2</span>
+                  {isPreviewing ? (
+                    <div className="w-full h-full animate-pulse bg-gradient-to-br from-stone-100 to-stone-50" />
+                  ) : preview?.imageUrl ? (
+                    <img
+                      src={preview.imageUrl}
+                      alt={preview.name || 'Product'}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="material-symbols-outlined text-soft-gold !text-5xl">inventory_2</span>
+                  )}
                 </div>
+
+                {/* Details */}
                 <div className="flex flex-col gap-6">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="size-1.5 rounded-full bg-brand-gold animate-pulse" />
-                      <span className="text-[10px] font-bold tracking-[0.2em] text-brand-gold uppercase">
-                        Ready to Track
-                      </span>
-                    </div>
-                    <h3 className="text-2xl font-display text-text-main">
-                      New Product
-                    </h3>
-                    <p className="text-xs text-text-muted uppercase tracking-[0.15em] font-medium">
-                      Product details will be fetched automatically
-                    </p>
+                  <div className="space-y-2">
+                    {isPreviewing ? (
+                      <>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="material-symbols-outlined animate-spin text-brand-gold !text-sm">progress_activity</span>
+                          <span className="text-[10px] font-bold tracking-[0.2em] text-brand-gold uppercase">
+                            Fetching Details
+                          </span>
+                        </div>
+                        <div className="h-7 w-48 bg-stone-100 rounded-lg animate-pulse" />
+                        <div className="h-4 w-32 bg-stone-50 rounded animate-pulse mt-1" />
+                      </>
+                    ) : preview?.name ? (
+                      <>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="size-1.5 rounded-full bg-emerald-500" />
+                          <span className="text-[10px] font-bold tracking-[0.2em] text-emerald-600 uppercase">
+                            Product Found
+                          </span>
+                        </div>
+                        <h3 className="text-2xl font-display text-text-main leading-snug">
+                          {preview.name}
+                        </h3>
+                        <div className="flex items-center gap-3 flex-wrap">
+                          {preview.price != null && (
+                            <span className="text-lg font-semibold text-text-main">
+                              {formatPrice(preview.price, preview.currency)}
+                            </span>
+                          )}
+                          {preview.inStock != null && (
+                            <span className={`text-[10px] font-bold tracking-[0.15em] uppercase px-2.5 py-1 rounded-full ${
+                              preview.inStock
+                                ? 'bg-emerald-50 text-emerald-600'
+                                : 'bg-red-50 text-red-500'
+                            }`}>
+                              {preview.inStock ? 'In Stock' : 'Out of Stock'}
+                            </span>
+                          )}
+                        </div>
+                        {preview.retailer && (
+                          <p className="text-xs text-text-muted uppercase tracking-[0.15em] font-medium">
+                            {preview.retailer}
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="size-1.5 rounded-full bg-brand-gold animate-pulse" />
+                          <span className="text-[10px] font-bold tracking-[0.2em] text-brand-gold uppercase">
+                            {previewFailed ? 'Preview Unavailable' : 'Ready to Track'}
+                          </span>
+                        </div>
+                        <h3 className="text-2xl font-display text-text-main">
+                          New Product
+                        </h3>
+                        <p className="text-xs text-text-muted uppercase tracking-[0.15em] font-medium">
+                          {previewFailed
+                            ? "Couldn\u2019t preview \u2014 details will be fetched on activation"
+                            : 'Product details will be fetched automatically'}
+                        </p>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

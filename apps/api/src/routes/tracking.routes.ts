@@ -10,8 +10,12 @@ import {
   updateTrackedItem,
   deleteTrackedItem,
 } from '../services/tracking.service.js';
+import { extractProductData, closeBrowser } from '@covet/scraper';
 import { isValidProductUrl } from '@covet/shared';
 import { AppError } from '../middleware/errorHandler.js';
+import { createLogger } from '@covet/shared/logger';
+
+const log = createLogger('tracking');
 
 const router: RouterType = Router();
 
@@ -36,6 +40,46 @@ router.get('/', async (req, res, next) => {
     const items = await getTrackedItems(userId);
 
     res.json({ items });
+  } catch (error) {
+    next(error);
+  }
+});
+
+const PREVIEW_TIMEOUT_MS = 15000;
+
+const previewSchema = z.object({
+  url: z.string().refine(isValidProductUrl, 'Invalid product URL'),
+});
+
+// POST /tracking/preview - Preview product data without creating a tracked item
+router.post('/preview', async (req, res, next) => {
+  try {
+    const { url } = previewSchema.parse(req.body);
+
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Preview timed out')), PREVIEW_TIMEOUT_MS)
+    );
+
+    try {
+      const result = await Promise.race([
+        extractProductData(url),
+        timeoutPromise,
+      ]);
+
+      res.json({
+        name: result.data.name,
+        imageUrl: result.data.imageUrl,
+        price: result.data.price,
+        currency: result.data.currency,
+        inStock: result.data.inStock,
+        retailer: result.data.retailer,
+        variants: result.data.variants,
+      });
+    } catch (err) {
+      log.warn({ url, err }, 'Preview extraction failed');
+      await closeBrowser().catch(() => {});
+      throw new AppError(422, 'Could not extract product data from this URL');
+    }
   } catch (error) {
     next(error);
   }

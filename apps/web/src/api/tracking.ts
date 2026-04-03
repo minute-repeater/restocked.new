@@ -14,6 +14,27 @@ export async function getTrackedItems(
   });
 }
 
+export type ProductPreview = {
+  name: string | null;
+  imageUrl: string | null;
+  price: number | null;
+  currency: string | null;
+  inStock: boolean | null;
+  retailer: string | null;
+  variants: { name: string; sku?: string | null }[];
+};
+
+export async function previewProduct(
+  token: string,
+  url: string
+): Promise<ProductPreview> {
+  return apiRequest<ProductPreview>('/tracking/preview', {
+    method: 'POST',
+    token,
+    body: { url },
+  });
+}
+
 export async function addTrackedItem(
   token: string,
   url: string,
